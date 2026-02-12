@@ -24,7 +24,7 @@ const generateToken = (user) => {
 ================================= */
 export const registerUser = async (req, res) => {
   try {
-    const { name, email, password, college, role } = req.body;
+const { name, email, password, college } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -41,12 +41,13 @@ export const registerUser = async (req, res) => {
     }
 
     const user = await User.create({
-      name,
-      email,
-      password: hashedPassword,
-      college,
-      role,
-    });
+  name,
+  email,
+  password: hashedPassword,
+  college,
+  role: "student", // 🔒 force student role
+});
+
 
     const token = generateToken(user);
 
