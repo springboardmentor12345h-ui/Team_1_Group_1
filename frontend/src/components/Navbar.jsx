@@ -1,30 +1,43 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-// import logoutIcon from "V:/CIP/Internships/Infosys Springboard/Team_1_Group_1/frontend/src/assetslogout.png";
 import { FiLogOut } from "react-icons/fi";
 
-
-export default function Navbar({ name = "User", role = "Student" }) {
+export default function Navbar() {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
 
+  // 🔹 Get dynamic values from localStorage
+  const name = localStorage.getItem("userName") || "User";
+  const role = localStorage.getItem("role") || "";
+
+  const formattedRole =
+    role.charAt(0).toUpperCase() + role.slice(1);
+
   const handleLogout = () => {
     localStorage.removeItem("role");
     localStorage.removeItem("token");
+    localStorage.removeItem("userName");
     navigate("/");
   };
 
   // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target)
+      ) {
         setOpen(false);
       }
     }
 
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    return () =>
+      document.removeEventListener(
+        "mousedown",
+        handleClickOutside
+      );
   }, []);
 
   return (
@@ -36,7 +49,6 @@ export default function Navbar({ name = "User", role = "Student" }) {
         justifyContent: "space-between",
         alignItems: "center",
         borderBottom: "1px solid #e0e0e0",
-        position: "relative",
       }}
     >
       <h3 style={{ margin: 0 }}>CampusEventHub</h3>
@@ -51,6 +63,7 @@ export default function Navbar({ name = "User", role = "Student" }) {
             cursor: "pointer",
           }}
         >
+          {/* Avatar */}
           <div
             style={{
               width: "36px",
@@ -64,12 +77,15 @@ export default function Navbar({ name = "User", role = "Student" }) {
               fontWeight: "bold",
             }}
           >
-            {name.charAt(0)}
+            {name.charAt(0).toUpperCase()}
           </div>
 
+          {/* Name + Role */}
           <div>
             <div style={{ fontWeight: "500" }}>{name}</div>
-            <div style={{ fontSize: "12px", color: "#666" }}>{role}</div>
+            <div style={{ fontSize: "12px", color: "#666" }}>
+              {formattedRole}
+            </div>
           </div>
         </div>
 
@@ -83,7 +99,8 @@ export default function Navbar({ name = "User", role = "Student" }) {
               border: "1px solid #ddd",
               borderRadius: "6px",
               padding: "10px",
-              boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
+              boxShadow:
+                "0 4px 10px rgba(0,0,0,0.1)",
               width: "160px",
             }}
           >
@@ -104,11 +121,14 @@ export default function Navbar({ name = "User", role = "Student" }) {
                 transition: "all 0.2s ease",
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "#f5f5f5";
-                e.currentTarget.style.color = "#f44336";
+                e.currentTarget.style.backgroundColor =
+                  "#f5f5f5";
+                e.currentTarget.style.color =
+                  "#f44336";
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "transparent";
+                e.currentTarget.style.backgroundColor =
+                  "transparent";
                 e.currentTarget.style.color = "#333";
               }}
             >

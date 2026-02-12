@@ -1,7 +1,8 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
-import StudentLogin from "./pages/StudentLogin";
-import AdminLogin from "./pages/AdminLogin";
+import Register from "./pages/Register";
+import Login from "./pages/Login";
+
 
 import StudentDashboard from "./pages/StudentDashboard";
 
@@ -16,11 +17,10 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/register" element={<Register />} />
+        <Route path="/login" element={<Login />} />
         <Route path="/" element={<Home />} />
 
-        {/* Login Routes */}
-        <Route path="/student/login" element={<StudentLogin />} />
-        <Route path="/admin/login" element={<AdminLogin />} />
 
         {/* Protected Dashboard Routes */}
         <Route
