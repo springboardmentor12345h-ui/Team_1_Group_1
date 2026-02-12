@@ -1,9 +1,11 @@
-import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 
-/**
- * Generate JWT token
- */
+
+/* ===============================
+   GENERATE JWT TOKEN
+================================= */
 const generateToken = (user) => {
   return jwt.sign(
     {
@@ -15,96 +17,109 @@ const generateToken = (user) => {
   );
 };
 
-/**
- * @desc   Register new user
- * @route  POST /api/auth/register
- */
+
+/* ===============================
+   REGISTER USER
+   POST /api/auth/register
+================================= */
 export const registerUser = async (req, res) => {
   try {
     const { name, email, password, college, role } = req.body;
 
-    // Validation
-    if (!name || !email || !password || !college) {
-      return res.status(400).json({ message: "All fields are required" });
-    }
-
-    // Check duplicate email
+    // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ message: "Email already registered" });
+      return res.status(400).json({ message: "User already exists" });
     }
 
-    // Create user
+    let hashedPassword = password;
+
+    // If model DOESN’T hash automatically → hash here
+    if (!User.schema.methods.comparePassword) {
+      const salt = await bcrypt.genSalt(10);
+      hashedPassword = await bcrypt.hash(password, salt);
+    }
+
     const user = await User.create({
       name,
       email,
-      password,
+      password: hashedPassword,
       college,
-      role: role || "student",
+      role,
     });
 
-    // Generate token
     const token = generateToken(user);
 
-    return res.status(201).json({
+    res.status(201).json({
       message: "User registered successfully",
       token,
       user: {
         id: user._id,
         name: user.name,
         email: user.email,
-        college: user.college,
         role: user.role,
+        college: user.college,
       },
     });
   } catch (error) {
-    console.error("Register Error:", error);
-    return res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
-/**
- * @desc   Login user
- * @route  POST /api/auth/login
- */
+
+/* ===============================
+   LOGIN USER
+   POST /api/auth/login
+================================= */
 export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ message: "Email and password required" });
-    }
-
-    // Include password explicitly
+    // Include password even if select:false exists
     const user = await User.findOne({ email }).select("+password");
 
-    if (!user || !(await user.comparePassword(password))) {
-      return res.status(401).json({ message: "Invalid credentials" });
+    if (!user) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
+
+    let isMatch = false;
+
+    // If secure model → use comparePassword()
+    if (user.comparePassword) {
+      isMatch = await user.comparePassword(password);
+    } else {
+      // fallback for basic model
+      isMatch = await bcrypt.compare(password, user.password);
+    }
+
+    if (!isMatch) {
+      return res.status(400).json({ message: "Invalid credentials" });
     }
 
     const token = generateToken(user);
 
-    return res.status(200).json({
+    res.json({
       message: "Login successful",
       token,
       user: {
         id: user._id,
         name: user.name,
         email: user.email,
-        college: user.college,
         role: user.role,
+        college: user.college,
       },
     });
   } catch (error) {
-    console.error("Login Error:", error);
-    return res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
-/**
- * @desc   Get current logged-in user
- * @route  GET /api/auth/me
- */
+
+/* ===============================
+   GET CURRENT USER
+   GET /api/auth/me
+   (Protected route)
+================================= */
 export const getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
@@ -113,15 +128,16 @@ export const getMe = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    return res.status(200).json({
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      college: user.college,
-      role: user.role,
+    res.json({
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        college: user.college,
+      },
     });
   } catch (error) {
-    console.error("GetMe Error:", error);
-    return res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
