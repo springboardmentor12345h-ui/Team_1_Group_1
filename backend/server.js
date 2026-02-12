@@ -1,68 +1,26 @@
-import dotenv from "dotenv";
-dotenv.config();
-
 import express from "express";
 import cors from "cors";
-import helmet from "helmet";
+import dotenv from "dotenv";
 import connectDB from "./src/config/db.js";
 
-import {
-   verifyToken,
-   collegeAdminOnly,
-   superAdminOnly,
-   studentOnly
-} from "./src/middleware/authMiddleware.js";
+dotenv.config();
 
 const app = express();
 
-/* ===============================
-   CONNECT DATABASE
-================================ */
-connectDB();
+// connect database
+// connectDB();
 
-/* ===============================
-   SECURITY MIDDLEWARE
-================================ */
-app.use(helmet());
-
-app.use(cors({
-   origin: "http://localhost:3000",
-   credentials: true,
-}));
-
+// middlewares
+app.use(cors());
 app.use(express.json());
 
-/* ===============================
-   TEST ROUTE
-================================ */
+// test route
 app.get("/", (req, res) => {
-   res.send("CampusEventHub API running");
+  res.send("CampusEventHub API running");
 });
 
-/* ===============================
-   PROTECTED ROUTES
-================================ */
-
-// College Admin Route
-app.get("/admin", verifyToken, collegeAdminOnly, (req, res) => {
-   res.json({ message: "Welcome College Admin" });
-});
-
-// Super Admin Route
-app.get("/superadmin", verifyToken, superAdminOnly, (req, res) => {
-   res.json({ message: "Welcome Super Admin" });
-});
-
-// Student Route
-app.get("/student", verifyToken, studentOnly, (req, res) => {
-   res.json({ message: "Welcome Student" });
-});
-
-/* ===============================
-   START SERVER
-================================ */
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-   console.log(`Server running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
