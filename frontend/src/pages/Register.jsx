@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../auth.css";
+import { FiUser } from "react-icons/fi";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -39,7 +40,7 @@ export default function Register() {
     localStorage.setItem("userName", fullName);
 
 
-    alert("Registration successful! Please login.");
+    // alert("Registration successful! Please login.");
 
     navigate("/login");
   };
@@ -47,7 +48,10 @@ export default function Register() {
   return (
     <div className="auth-container">
       <div className="auth-card">
-        <div className="icon-circle">👤</div>
+        <div className="icon-circle">
+          <FiUser size={22} />
+        </div>
+
 
         <h2>Create Account</h2>
         <p className="subtitle">

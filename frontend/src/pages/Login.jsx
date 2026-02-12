@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../auth.css";
+import { FiMail } from "react-icons/fi";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -20,7 +21,9 @@ export default function Login() {
       return;
     }
 
+    // 🔥 Store login details
     localStorage.setItem("token", "demo-token");
+    localStorage.setItem("userEmail", email);  // 👈 NEW LINE
 
     if (role === "student") {
       navigate("/dashboard/student");
@@ -32,7 +35,9 @@ export default function Login() {
   return (
     <div className="auth-container">
       <div className="auth-card">
-        <div className="icon-circle">✉️</div>
+        <div className="icon-circle">
+          <FiMail size={20} />
+        </div>
 
         <h2>Welcome Back</h2>
         <p className="subtitle">
