@@ -146,7 +146,7 @@ function EventManagement() {
         </thead>
         <tbody>
           <tr>
-            <td>Hackathon 2024</td>
+            <td>Hackathon 2026</td>
             <td>ABC College</td>
             <td>120</td>
             <td>Approved</td>

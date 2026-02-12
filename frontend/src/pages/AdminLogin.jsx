@@ -38,7 +38,9 @@ return (
         backgroundColor: "#2a2a2a",
       }}
     >
-      <h2 style={{ textAlign: "center" }}>Admin Login</h2>
+    <h2 style={{ color: "white", marginBottom: "20px" }}>
+      Admin Login
+    </h2>
 
       <form
         onSubmit={handleLogin}
