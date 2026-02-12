@@ -22,7 +22,7 @@ const userSchema = new mongoose.Schema(
       enum: ["student", "college_admin", "super_admin"],
       default: "student",
     },
-    collegeName: {
+    college: {
       type: String,
       required: function () {
         return this.role === "college_admin";
