@@ -2,15 +2,17 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../auth.css";
 import { FiUser } from "react-icons/fi";
+import { registerUser } from "../services/api";
+import { useAuth } from "../context/AuthContext";
 
 export default function Register() {
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
     college: "",
-    role: "student",
     password: "",
     confirmPassword: "",
   });
@@ -22,8 +24,9 @@ export default function Register() {
     });
   };
 
-  const handleRegister = () => {
-    const { fullName, email, college, role, password, confirmPassword } = formData;
+  /* ================= UPDATED REGISTER LOGIC ================= */
+  const handleRegister = async () => {
+    const { fullName, email, college, password, confirmPassword } = formData;
 
     if (!fullName || !email || !college || !password || !confirmPassword) {
       alert("Please fill all fields");
@@ -35,15 +38,30 @@ export default function Register() {
       return;
     }
 
-    // Temporary storage (until backend integration)
-    localStorage.setItem("role", role);
-    localStorage.setItem("userName", fullName);
+    try {
+      const res = await registerUser({
+        name: fullName,
+        email,
+        password,
+        college,
+      });
 
+      const { token, user } = res.data;
 
-    // alert("Registration successful! Please login.");
+      // Inform Auth Context
+      login(token, user);
 
-    navigate("/login");
+      // Redirect based on role
+      if (user.role === "student") {
+        navigate("/dashboard/student");
+      } else {
+        navigate("/dashboard/admin");
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || "Registration failed");
+    }
   };
+  /* ========================================================== */
 
   return (
     <div className="auth-container">
@@ -52,11 +70,8 @@ export default function Register() {
           <FiUser size={22} />
         </div>
 
-
         <h2>Create Account</h2>
-        <p className="subtitle">
-          Join CampusEventHub
-        </p>
+        <p className="subtitle">Join CampusEventHub</p>
 
         <label>Full Name</label>
         <input
@@ -84,23 +99,6 @@ export default function Register() {
           value={formData.college}
           onChange={handleChange}
         />
-
-        <label>Role</label>
-        <select
-          name="role"
-          value={formData.role}
-          onChange={handleChange}
-          style={{
-            width: "100%",
-            padding: "10px",
-            marginTop: "5px",
-            borderRadius: "6px",
-            border: "1px solid #ddd"
-          }}
-        >
-          <option value="student">Student</option>
-          <option value="admin">Admin</option>
-        </select>
 
         <label>Password</label>
         <input

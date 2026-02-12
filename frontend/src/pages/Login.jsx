@@ -2,35 +2,41 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../auth.css";
 import { FiMail } from "react-icons/fi";
+import { loginUser } from "../services/api";
+import { useAuth } from "../context/AuthContext";   // ⭐ NEW
 
 export default function Login() {
   const navigate = useNavigate();
+  const { login } = useAuth();   // ⭐ NEW
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleLogin = () => {
+  /* ================= UPDATED LOGIN LOGIC ================= */
+  const handleLogin = async () => {
     if (!email || !password) {
       alert("Please enter email and password");
       return;
     }
 
-    const role = localStorage.getItem("role");
+    try {
+      const res = await loginUser({ email, password });
 
-    if (!role) {
-      alert("Please register first");
-      return;
-    }
+      const { token, user } = res.data;
 
-    // 🔥 Store login details
-    localStorage.setItem("token", "demo-token");
-    localStorage.setItem("userEmail", email);  // 👈 NEW LINE
+      // ⭐ INFORM CONTEXT (instead of manual localStorage)
+      login(token, user);
 
-    if (role === "student") {
-      navigate("/dashboard/student");
-    } else {
-      navigate("/dashboard/admin");
+      // redirect
+      if (user.role === "student") {
+        navigate("/dashboard/student");
+      } else {
+        navigate("/dashboard/admin");
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || "Login failed");
     }
   };
+  /* ======================================================= */
 
   return (
     <div className="auth-container">
@@ -40,9 +46,7 @@ export default function Login() {
         </div>
 
         <h2>Welcome Back</h2>
-        <p className="subtitle">
-          Sign in to your account
-        </p>
+        <p className="subtitle">Sign in to your account</p>
 
         <label>Email Address</label>
         <input

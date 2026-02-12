@@ -1,13 +1,19 @@
 import { Navigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";   // ⭐ NEW
 
 const ProtectedRoute = ({ children, role }) => {
-  const userRole = localStorage.getItem("role");
+  const { user, loading } = useAuth();   // ⭐ FROM CONTEXT
 
-  if (!userRole) {
-    return <Navigate to="/" />;
+  // Wait until auth check finishes
+  if (loading) return null;
+
+  // Not logged in
+  if (!user) {
+    return <Navigate to="/login" />;
   }
 
-  if (role && userRole !== role) {
+  // Role mismatch
+  if (role && user.role !== role) {
     return <Navigate to="/" />;
   }
 

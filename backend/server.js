@@ -1,23 +1,28 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+
 import connectDB from "./src/config/db.js";
+import authRoutes from "./src/routes/authRoutes.js";
 
 dotenv.config();
 
 const app = express();
 
-// connect database
-// connectDB();
+// Connect database
+connectDB();
 
-// middlewares
+// Middlewares
 app.use(cors());
 app.use(express.json());
 
-// test route
+// Health check route
 app.get("/", (req, res) => {
   res.send("CampusEventHub API running");
 });
+
+// Auth routes
+app.use("/api/auth", authRoutes);
 
 const PORT = process.env.PORT || 5000;
 
