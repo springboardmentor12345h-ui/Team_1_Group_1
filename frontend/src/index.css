@@ -1,3 +1,17 @@
+
+@import "tailwindcss/preflight" layer(base) disabled;
+@import "tailwindcss";
+
+body {
+  font-family: 'Inter', sans-serif;
+}
+/* Restore default input styles for old pages */
+input,
+textarea,
+select {
+  background-color: white;
+}
+
 body {
   margin: 0;
   font-family: "Segoe UI", Arial, sans-serif;
@@ -8,3 +22,26 @@ body {
 button {
   cursor: pointer;
 }
+
+/* Hide scrollbar by default */
+::-webkit-scrollbar {
+  width: 6px;
+  opacity: 0;
+}
+
+/* Show only while scrolling */
+.scrolling ::-webkit-scrollbar {
+  opacity: 1;
+}
+
+/* Light minimal thumb */
+::-webkit-scrollbar-thumb {
+  background: rgba(59, 130, 246, 0.35);
+  border-radius: 10px;
+}
+
+/* Track transparent */
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
