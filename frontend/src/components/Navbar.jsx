@@ -1,16 +1,15 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiLogOut } from "react-icons/fi";
-import { useAuth } from "../context/AuthContext";   // ⭐ NEW
+import { FiLogOut, FiChevronDown } from "react-icons/fi";
+import { useAuth } from "../context/AuthContext";
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
 
-  const { user, logout } = useAuth();   // ⭐ NEW
+  const { user, logout } = useAuth();
 
-  // 🔹 Get values from Context instead of localStorage
   const name = user?.name || "User";
   const role = user?.role || "";
   const email = user?.email || "";
@@ -19,11 +18,11 @@ export default function Navbar() {
     role.charAt(0).toUpperCase() + role.slice(1);
 
   const handleLogout = () => {
-    logout();        // ⭐ context logout
+    logout();
     navigate("/login");
   };
 
-  // Close dropdown when clicking outside
+  // Close dropdown on outside click
   useEffect(() => {
     function handleClickOutside(event) {
       if (
@@ -36,133 +35,66 @@ export default function Navbar() {
 
     document.addEventListener("mousedown", handleClickOutside);
     return () =>
-      document.removeEventListener(
-        "mousedown",
-        handleClickOutside
-      );
+      document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   return (
-    <div
-      style={{
-        backgroundColor: "#1F3C88",
-        padding: "10px 40px",
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-      }}
-    >
+    <header className="w-full  bg-sky-200 border-sky-200 backdrop-blur-md border-b  px-8 py-3 flex justify-between items-center shadow-sm">
+
+      
       {/* Brand */}
-      <div
-        style={{
-          fontSize: "18px",
-          fontWeight: "600",
-          color: "white",
-          letterSpacing: "0.5px",
-        }}
+      <h1
+        onClick={() => navigate("/")}
+        className="text-xl font-semibold text-sky-900 cursor-pointer tracking-tight"
       >
         CampusEventHub
-      </div>
+      </h1>
 
-      <div ref={dropdownRef} style={{ position: "relative" }}>
-        <div
+      {/* Profile */}
+      <div ref={dropdownRef} className="relative">
+        <button
           onClick={() => setOpen(!open)}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-            cursor: "pointer",
-          }}
+          className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-sky-300/40 transition"
         >
           {/* Avatar */}
-          <div
-            style={{
-              width: "34px",
-              height: "34px",
-              borderRadius: "50%",
-              backgroundColor: "white",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              color: "#1F3C88",
-              fontWeight: "600",
-              fontSize: "14px",
-            }}
-          >
+          <div className="w-9 h-9 rounded-full bg-blue-100 text-sky-900 flex items-center justify-center font-semibold text-sm">
             {name.charAt(0).toUpperCase()}
           </div>
 
-          {/* Name + Role */}
-          <div style={{ lineHeight: "1.2" }}>
-            <div style={{ fontSize: "14px", fontWeight: "500", color: "white" }}>
-              {name}
-            </div>
-            <div style={{ fontSize: "11px", color: "#dbeafe" }}>
-              {formattedRole}
-            </div>
+          {/* Name & Role */}
+          <div className="text-left leading-tight hidden sm:block">
+            <p className="text-sm font-medium text-gray-800">{name}</p>
+            <p className="text-xs text-gray-500">{formattedRole}</p>
           </div>
-        </div>
 
+          <FiChevronDown
+            className={`text-gray-500 transition ${
+              open ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+
+        {/* Dropdown */}
         {open && (
-          <div
-            style={{
-              position: "absolute",
-              right: 0,
-              top: "45px",
-              backgroundColor: "#ffffff",
-              borderRadius: "8px",
-              padding: "8px",
-              boxShadow: "0 8px 20px rgba(0,0,0,0.12)",
-              width: "200px",
-            }}
-          >
-            {/* Email Only */}
-            <div
-              style={{
-                padding: "8px",
-                borderBottom: "1px solid #e5e7eb",
-                marginBottom: "6px",
-                fontSize: "12px",
-                color: "#6b7280",
-                wordBreak: "break-all",
-              }}
-            >
+          <div className="absolute right-0 mt-3 w-56 bg-sky-50 border-sky-200 rounded-2xl shadow-xl border  p-2 animate-in fade-in zoom-in duration-150 z-50">
+
+            
+            {/* Email */}
+            <div className="px-3 py-2 text-xs text-gray-500 border-b break-all">
               {email}
             </div>
 
-            {/* Logout Button */}
+            {/* Logout */}
             <button
               onClick={handleLogout}
-              style={{
-                width: "100%",
-                padding: "8px",
-                border: "none",
-                backgroundColor: "transparent",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                cursor: "pointer",
-                fontSize: "13px",
-                fontWeight: "500",
-                borderRadius: "6px",
-                color: "#333",
-                transition: "0.2s ease",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "#fee2e2";
-                e.currentTarget.style.color = "#E53935";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "transparent";
-                e.currentTarget.style.color = "#333";
-              }}
+              className="w-full mt-1 flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg text-gray-700 hover:bg-red-50 hover:text-red-600 transition"
             >
-              <FiLogOut size={14} />
+              <FiLogOut size={16} />
               Logout
             </button>
           </div>
         )}
       </div>
-    </div>
+    </header>
   );
 }
