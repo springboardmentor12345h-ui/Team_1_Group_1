@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Admin Dashboard</title>
+<style>
+body { font-family: Arial; background:#fff3cd; }
+.box {
+  width:80%; margin:40px auto;
+  background:white; padding:20px;
+  border-radius:10px;
+}
+</style>
+</head>
+<body>
+
+<div class="box">
+<h1>College Admin Dashboard</h1>
+<p>Manage Events & Students</p>
+
+<ul>
+  <li>Create Events</li>
+  <li>View Registrations</li>
+  <li>Approve / Reject</li>
+</ul>
+
+<button onclick="logout()">Logout</button>
+</div>
+
+<script>
+    const role = localStorage.getItem("role");
+
+if(role !== "college_admin"){
+  alert("Access Denied");
+  window.location = "login.html";
+}
+
+function logout(){
+    localStorage.clear();
+window.location="login.html";
+}
+</script>
+
+</body>
+</html>

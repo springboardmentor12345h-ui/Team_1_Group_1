@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Student Dashboard</title>
+<style>
+body { font-family: Arial; background:#f8f9fa; }
+.box {
+  width:80%; margin:40px auto;
+  background:white; padding:20px;
+  border-radius:10px;
+}
+</style>
+</head>
+<body>
+
+<div class="box">
+<h1>Student Dashboard</h1>
+<p>Welcome to CampusEventHub</p>
+
+<ul>
+  <li>View Events</li>
+  <li>Register for Events</li>
+  <li>Give Feedback</li>
+</ul>
+
+<button onclick="logout()">Logout</button>
+</div>
+
+<script>
+    const role = localStorage.getItem("role");
+
+if(role !== "student"){
+  alert("Access Denied");
+  window.location = "login.html";
+}
+
+function logout(){
+    localStorage.clear();
+window.location="login.html";
+}
+</script>
+
+</body>
+</html>
