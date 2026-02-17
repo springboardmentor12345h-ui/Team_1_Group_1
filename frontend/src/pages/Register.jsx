@@ -15,6 +15,7 @@ export default function Register() {
     college: "",
     password: "",
     confirmPassword: "",
+    role: "student", // ✅ default role
   });
 
   const handleChange = (e) => {
@@ -24,12 +25,18 @@ export default function Register() {
     });
   };
 
-  /* ================= UPDATED REGISTER LOGIC ================= */
   const handleRegister = async () => {
-    const { fullName, email, college, password, confirmPassword } = formData;
+    const {
+      fullName,
+      email,
+      college,
+      password,
+      confirmPassword,
+      role,
+    } = formData;
 
-    if (!fullName || !email || !college || !password || !confirmPassword) {
-      alert("Please fill all fields");
+    if (!fullName || !email || !password || !confirmPassword) {
+      alert("Please fill all required fields");
       return;
     }
 
@@ -44,11 +51,12 @@ export default function Register() {
         email,
         password,
         college,
+        role, // ✅ send role to backend
       });
 
       const { token, user } = res.data;
 
-      // Inform Auth Context
+      // Save user in context
       login(token, user);
 
       // Redirect based on role
@@ -61,7 +69,6 @@ export default function Register() {
       alert(err.response?.data?.message || "Registration failed");
     }
   };
-  /* ========================================================== */
 
   return (
     <div className="auth-container">
@@ -99,6 +106,18 @@ export default function Register() {
           value={formData.college}
           onChange={handleChange}
         />
+
+        {/* ✅ NEW ROLE SELECT */}
+        <label>Select Role</label>
+        <select
+          name="role"
+          value={formData.role}
+          onChange={handleChange}
+        >
+          <option value="student">Student</option>
+          <option value="college_admin">College Admin</option>
+          <option value="super_admin">Super Admin</option>
+        </select>
 
         <label>Password</label>
         <input
