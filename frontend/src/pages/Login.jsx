@@ -28,10 +28,15 @@ export default function Login() {
       login(token, user);
 
       if (user.role === "student") {
-        navigate("/dashboard/student");
-      } else {
-        navigate("/dashboard/admin");
-      }
+  navigate("/dashboard/student");
+} else if (user.role === "college_admin") {
+  navigate("/dashboard/admin");
+} else if (user.role === "super_admin") {
+  navigate("/dashboard/superadmin");
+} else {
+  navigate("/");
+}
+
     } catch (err) {
       setError(err.response?.data?.message || "Login failed");
     }

@@ -1,4 +1,5 @@
 // AdminDashboard.jsx
+import { useNavigate } from "react-router-dom";
 
 import { useState } from "react";
 import Navbar from "../components/Navbar";
@@ -402,6 +403,9 @@ function UserManagement() {
 import { FiCalendar } from "react-icons/fi";
 
 function EventManagement() {
+
+  const navigate = useNavigate();
+
   const events = [
     {
       title: "Inter-College Hackathon 2024",
@@ -440,22 +444,73 @@ function EventManagement() {
     >
       {/* Header */}
       <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          marginBottom: "20px",
-        }}
-      >
-        <h3>Event Management</h3>
-        <div style={{ fontSize: "14px" }}>
-          <span style={{ color: "#2563eb", marginRight: "15px", cursor: "pointer" }}>
-            Approve Pending
-          </span>
-          <span style={{ color: "#dc2626", cursor: "pointer" }}>
-            Flagged Events
-          </span>
-        </div>
-      </div>
+  style={{
+    display: "flex",
+    justifyContent: "space-between",
+    marginBottom: "20px",
+  }}
+>
+  <h3>Event Management</h3>
+
+  {/* RIGHT SIDE ACTIONS */}
+  {/* RIGHT SIDE ACTION BUTTONS */}
+<div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+  
+  {/* Approve Pending */}
+  <button
+    style={{
+      backgroundColor: "#e0ecff",
+      color: "#1F3C88",
+      border: "none",
+      padding: "7px 12px",
+      borderRadius: "8px",
+      cursor: "pointer",
+      fontSize: "13px",
+      fontWeight: "500",
+    }}
+    onClick={() => alert("Pending approvals view coming soon")}
+  >
+    Approve Pending
+  </button>
+
+  {/* Flagged Events */}
+  <button
+    style={{
+      backgroundColor: "#fee2e2",
+      color: "#dc2626",
+      border: "none",
+      padding: "7px 12px",
+      borderRadius: "8px",
+      cursor: "pointer",
+      fontSize: "13px",
+      fontWeight: "500",
+    }}
+    onClick={() => alert("Flagged events view coming soon")}
+  >
+    Flagged Events
+  </button>
+
+  {/* Create Event */}
+  <button
+    style={{
+      backgroundColor: "#1F3C88",
+      color: "#fff",
+      border: "none",
+      padding: "8px 14px",
+      borderRadius: "8px",
+      cursor: "pointer",
+      fontSize: "14px",
+      fontWeight: "600",
+    }}
+    onClick={() => navigate("/dashboard/admin/create-event")}
+
+  >
+    + Create Event
+  </button>
+</div>
+
+</div>
+
 
       {/* Event Cards */}
       {events.map((event, index) => (
