@@ -502,7 +502,7 @@ function EventManagement() {
       fontSize: "14px",
       fontWeight: "600",
     }}
-    onClick={() => navigate("/dashboard/admin/create-event")}
+    onClick={() => navigate("/dashboard/collegeadmin/create-event")}
 
   >
     + Create Event
