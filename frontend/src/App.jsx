@@ -37,7 +37,7 @@ function App() {
           }
         />
         <Route
-  path="/dashboard/admin/create-event"
+  path="/dashboard/collegeadmin/create-event"
   element={
     <ProtectedRoute roles={["college_admin"]}>
       <CreateEvent />

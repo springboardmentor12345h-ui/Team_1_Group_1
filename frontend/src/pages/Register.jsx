@@ -61,7 +61,7 @@ export default function Register() {
       if (user.role === "student") {
   navigate("/dashboard/student");
 } else if (user.role === "college_admin") {
-  navigate("/dashboard/admin");
+  navigate("/dashboard/collegeadmin");
 } else if (user.role === "super_admin") {
   navigate("/dashboard/superadmin");
 } else {
