@@ -3,25 +3,17 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Register from "./pages/Register";
 import Login from "./pages/Login";
 import Home from "./pages/Home";
-import { Navigate } from "react-router-dom";
-
-
 import StudentDashboard from "./pages/StudentDashboard";
-
 import AdminDashboard from "./pages/AdminDashboard";
-
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/" element={<Home />} />
         <Route path="/register" element={<Register />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/" element={<Home />} />
 
-
-
-        {/* Protected Dashboard Routes */}
         <Route
           path="/dashboard/student"
           element={
@@ -34,7 +26,7 @@ function App() {
         <Route
           path="/dashboard/admin"
           element={
-            <ProtectedRoute role="admin">
+            <ProtectedRoute roles={["college_admin", "super_admin"]}>
               <AdminDashboard />
             </ProtectedRoute>
           }
