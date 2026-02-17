@@ -2,7 +2,6 @@ import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
-
 /* ===============================
    GENERATE JWT TOKEN
 ================================= */
@@ -17,14 +16,13 @@ const generateToken = (user) => {
   );
 };
 
-
 /* ===============================
    REGISTER USER
    POST /api/auth/register
 ================================= */
 export const registerUser = async (req, res) => {
   try {
-const { name, email, password, college } = req.body;
+    const { name, email, password, college, role } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -32,22 +30,25 @@ const { name, email, password, college } = req.body;
       return res.status(400).json({ message: "User already exists" });
     }
 
+    // Hash password safely
     let hashedPassword = password;
 
-    // If model DOESN’T hash automatically → hash here
     if (!User.schema.methods.comparePassword) {
       const salt = await bcrypt.genSalt(10);
       hashedPassword = await bcrypt.hash(password, salt);
     }
 
-    const user = await User.create({
-  name,
-  email,
-  password: hashedPassword,
-  college,
-  role: "student", // 🔒 force student role
-});
+    // ✅ Allow role-based registration for demo (safe fallback)
+    const allowedRoles = ["student", "college_admin", "super_admin"];
+    const selectedRole = allowedRoles.includes(role) ? role : "student";
 
+    const user = await User.create({
+      name,
+      email,
+      password: hashedPassword,
+      college,
+      role: selectedRole,
+    });
 
     const token = generateToken(user);
 
@@ -67,7 +68,6 @@ const { name, email, password, college } = req.body;
   }
 };
 
-
 /* ===============================
    LOGIN USER
    POST /api/auth/login
@@ -85,11 +85,10 @@ export const loginUser = async (req, res) => {
 
     let isMatch = false;
 
-    // If secure model → use comparePassword()
+    // Support both secure model comparePassword OR bcrypt fallback
     if (user.comparePassword) {
       isMatch = await user.comparePassword(password);
     } else {
-      // fallback for basic model
       isMatch = await bcrypt.compare(password, user.password);
     }
 
@@ -115,11 +114,9 @@ export const loginUser = async (req, res) => {
   }
 };
 
-
 /* ===============================
    GET CURRENT USER
    GET /api/auth/me
-   (Protected route)
 ================================= */
 export const getMe = async (req, res) => {
   try {

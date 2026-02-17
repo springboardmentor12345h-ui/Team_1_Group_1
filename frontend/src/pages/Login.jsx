@@ -3,40 +3,39 @@ import { useNavigate } from "react-router-dom";
 import "../auth.css";
 import { FiMail } from "react-icons/fi";
 import { loginUser } from "../services/api";
-import { useAuth } from "../context/AuthContext";   // ⭐ NEW
+import { useAuth } from "../context/AuthContext";
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login } = useAuth();   // ⭐ NEW
+  const { login } = useAuth();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");   // ⭐ NEW
 
-  /* ================= UPDATED LOGIN LOGIC ================= */
   const handleLogin = async () => {
+    setError("");   // clear old error
+
     if (!email || !password) {
-      alert("Please enter email and password");
+      setError("Please enter email and password");
       return;
     }
 
     try {
       const res = await loginUser({ email, password });
-
       const { token, user } = res.data;
 
-      // ⭐ INFORM CONTEXT (instead of manual localStorage)
       login(token, user);
 
-      // redirect
       if (user.role === "student") {
         navigate("/dashboard/student");
       } else {
         navigate("/dashboard/admin");
       }
     } catch (err) {
-      alert(err.response?.data?.message || "Login failed");
+      setError(err.response?.data?.message || "Login failed");
     }
   };
-  /* ======================================================= */
 
   return (
     <div className="auth-container">
@@ -48,12 +47,18 @@ export default function Login() {
         <h2>Welcome Back</h2>
         <p className="subtitle">Sign in to your account</p>
 
+        {/* ⭐ SIMPLE ERROR TEXT */}
+        {error && <p className="error-text">{error}</p>}
+
         <label>Email Address</label>
         <input
           type="email"
           placeholder="Enter your email"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => {
+            setEmail(e.target.value);
+            setError("");   // clear error while typing
+          }}
         />
 
         <label>Password</label>
@@ -61,7 +66,10 @@ export default function Login() {
           type="password"
           placeholder="Enter your password"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(e) => {
+            setPassword(e.target.value);
+            setError("");   // clear error while typing
+          }}
         />
 
         <button className="primary-btn" onClick={handleLogin}>

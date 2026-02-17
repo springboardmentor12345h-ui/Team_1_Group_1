@@ -9,16 +9,19 @@ export default function Register() {
   const navigate = useNavigate();
   const { login } = useAuth();
 
+  const [error, setError] = useState("");   // ⭐ NEW
+
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
     college: "",
     password: "",
     confirmPassword: "",
-    role: "student", // ✅ default role
+    role: "student",
   });
 
   const handleChange = (e) => {
+    setError("");   // clear error while typing
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
@@ -26,22 +29,18 @@ export default function Register() {
   };
 
   const handleRegister = async () => {
-    const {
-      fullName,
-      email,
-      college,
-      password,
-      confirmPassword,
-      role,
-    } = formData;
+    setError("");   // clear old error
+
+    const { fullName, email, college, password, confirmPassword, role } =
+      formData;
 
     if (!fullName || !email || !password || !confirmPassword) {
-      alert("Please fill all required fields");
+      setError("Please fill all required fields");
       return;
     }
 
     if (password !== confirmPassword) {
-      alert("Passwords do not match");
+      setError("Passwords do not match");
       return;
     }
 
@@ -51,22 +50,20 @@ export default function Register() {
         email,
         password,
         college,
-        role, // ✅ send role to backend
+        role,
       });
 
       const { token, user } = res.data;
 
-      // Save user in context
       login(token, user);
 
-      // Redirect based on role
       if (user.role === "student") {
         navigate("/dashboard/student");
       } else {
         navigate("/dashboard/admin");
       }
     } catch (err) {
-      alert(err.response?.data?.message || "Registration failed");
+      setError(err.response?.data?.message || "Registration failed");
     }
   };
 
@@ -79,6 +76,9 @@ export default function Register() {
 
         <h2>Create Account</h2>
         <p className="subtitle">Join CampusEventHub</p>
+
+        {/* ⭐ INLINE ERROR MESSAGE */}
+        {error && <p className="error-text">{error}</p>}
 
         <label>Full Name</label>
         <input
@@ -107,13 +107,8 @@ export default function Register() {
           onChange={handleChange}
         />
 
-        {/* ✅ NEW ROLE SELECT */}
         <label>Select Role</label>
-        <select
-          name="role"
-          value={formData.role}
-          onChange={handleChange}
-        >
+        <select name="role" value={formData.role} onChange={handleChange}>
           <option value="student">Student</option>
           <option value="college_admin">College Admin</option>
           <option value="super_admin">Super Admin</option>
