@@ -39,7 +39,7 @@ export const registerUser = async (req, res) => {
     }
 
     // ✅ Allow role-based registration for demo (safe fallback)
-    const allowedRoles = ["student", "college_admin", "super_admin"];
+    const allowedRoles = ["student", "college_admin"];
     const selectedRole = allowedRoles.includes(role) ? role : "student";
 
     const user = await User.create({

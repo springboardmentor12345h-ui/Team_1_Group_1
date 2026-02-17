@@ -34,7 +34,8 @@ export default function Register() {
     const { fullName, email, college, password, confirmPassword, role } =
       formData;
 
-    if (!fullName || !email || !password || !confirmPassword) {
+    if (!fullName || !email || !college || !password || !confirmPassword)
+ {
       setError("Please fill all required fields");
       return;
     }
@@ -111,7 +112,6 @@ export default function Register() {
         <select name="role" value={formData.role} onChange={handleChange}>
           <option value="student">Student</option>
           <option value="college_admin">College Admin</option>
-          <option value="super_admin">Super Admin</option>
         </select>
 
         <label>Password</label>
