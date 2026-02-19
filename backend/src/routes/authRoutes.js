@@ -1,25 +1,36 @@
 import express from "express";
 import {
-  registerUser,
-  loginUser,
-  getMe,
-} from "../controllers/authController.js";
+  getPendingAdmins,
+  approveAdmin,
+} from "../controllers/adminController.js";
 
-import { verifyToken } from "../middleware/authmiddleware.js";
+import {
+  verifyToken,
+  authorizeRoles,
+} from "../middleware/authmiddleware.js";
 
 const router = express.Router();
 
-/* ===============================
-   AUTH ROUTES (TEST ONLY)
-================================= */
+/*
+========================================
+👑 SUPER ADMIN ROUTES
+========================================
+*/
 
-// Register
-router.post("/register", registerUser);
+// Get all pending college admins
+router.get(
+  "/pending-admins",
+  verifyToken,
+  authorizeRoles("super_admin"),
+  getPendingAdmins
+);
 
-// Login
-router.post("/login", loginUser);
-
-// Get logged-in user
-router.get("/me", verifyToken, getMe);
+// Approve college admin
+router.put(
+  "/approve/:id",
+  verifyToken,
+  authorizeRoles("super_admin"),
+  approveAdmin
+);
 
 export default router;
