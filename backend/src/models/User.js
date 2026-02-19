@@ -21,7 +21,7 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["student", "college_admin", "super_admin"],
+      enum: ["student", "college_admin"],
       default: "student",
     },
     college: {
@@ -30,6 +30,20 @@ const userSchema = new mongoose.Schema(
         return this.role === "college_admin";
       },
     },
+    // 🔐 Approval system
+    status: {
+      type: String,
+      enum: ["pending", "approved"],
+      default: function () {
+        // Students auto approved
+        if (this.role === "student") return "approved";
+
+        // College admin must be approved
+        if (this.role === "college_admin") return "pending";
+
+        return "approved";
+      }
+    }
   },
   { timestamps: true }
 );

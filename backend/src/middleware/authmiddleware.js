@@ -1,87 +1,48 @@
 import jwt from "jsonwebtoken";
-
-/* ===============================
-   VERIFY TOKEN MIDDLEWARE
-================================= */
-export const verifyToken = (req, res, next) => {
+import User from "../models/User.js";
+// 🔐 Verify Token
+export const verifyToken = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-
-    // Check if header exists
-    if (!authHeader) {
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.status(401).json({ message: "No token provided" });
     }
 
-    // Must start with Bearer
-    if (!authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({ message: "Invalid authorization format" });
-    }
-
-    const tokenParts = authHeader.split(" ");
-
-    if (tokenParts.length !== 2) {
-      return res.status(401).json({ message: "Malformed token" });
-    }
-
-    const token = tokenParts[1];
+    const token = authHeader.split(" ")[1];
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    req.user = decoded;
+    const user = await User.findById(decoded.id).select("-password");
+
+    if (!user) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    if (user.status !== "approved") {
+      return res.status(403).json({
+        message: "Account pending approval",
+      });
+    }
+
+    req.user = user;
     next();
 
   } catch (error) {
+    res.status(401).json({ message: "Invalid or expired token" });
+  }
+};
+// 🎭 Role Authorization
+export const authorizeRoles = (...roles) => {
+  return (req, res, next) => {
 
-    if (error.name === "TokenExpiredError") {
-      return res.status(401).json({ message: "Token expired" });
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
     }
 
-    return res.status(401).json({ message: "Invalid token" });
-  }
-};
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({ message: "Access denied" });
+    }
 
-
-/* ===============================
-   ROLE BASED MIDDLEWARE
-================================= */
-
-// College Admin only
-export const collegeAdminOnly = (req, res, next) => {
-  if (!req.user) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-
-  if (req.user.role !== "college_admin") {
-    return res.status(403).json({ message: "College Admin access only" });
-  }
-
-  next();
-};
-
-
-// Super Admin only
-export const superAdminOnly = (req, res, next) => {
-  if (!req.user) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-
-  if (req.user.role !== "super_admin") {
-    return res.status(403).json({ message: "Super Admin access only" });
-  }
-
-  next();
-};
-
-
-// Student only
-export const studentOnly = (req, res, next) => {
-  if (!req.user) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-
-  if (req.user.role !== "student") {
-    return res.status(403).json({ message: "Student access only" });
-  }
-
-  next();
+    next();
+  };
 };
