@@ -1,141 +1,211 @@
-import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import User from "../models/User.js";
 
-/* ===============================
-   GENERATE JWT TOKEN
-================================= */
-const generateToken = (user) => {
-  return jwt.sign(
-    {
-      id: user._id,
-      role: user.role,
-    },
-    process.env.JWT_SECRET,
-    { expiresIn: "7d" }
-  );
-};
-
-/* ===============================
-   REGISTER USER
-   POST /api/auth/register
-================================= */
+/*
+========================================
+📝 REGISTER USER
+========================================
+*/
 export const registerUser = async (req, res) => {
   try {
-    const { name, email, password, college, role } = req.body;
+    const { name, email, password, role, college } = req.body;
 
-    // Check if user already exists
+    // 1️⃣ Validate required fields
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        message: "All required fields must be filled",
+      });
+    }
+
+    // 2️⃣ Prevent manual super_admin registration
+    if (role === "super_admin") {
+      return res.status(403).json({
+        message: "Super Admin cannot be registered manually",
+      });
+    }
+
+    // 3️⃣ Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ message: "User already exists" });
+      return res.status(400).json({
+        message: "Email already registered",
+      });
     }
 
-    // Hash password safely
-    let hashedPassword = password;
-
-    if (!User.schema.methods.comparePassword) {
-      const salt = await bcrypt.genSalt(10);
-      hashedPassword = await bcrypt.hash(password, salt);
-    }
-
-    // ✅ Allow role-based registration for demo (safe fallback)
     const allowedRoles = ["student", "college_admin"];
     const selectedRole = allowedRoles.includes(role) ? role : "student";
+
+    // ✅ ADD THIS HERE
+if (selectedRole === "college_admin" && !college) {
+  return res.status(400).json({
+    message: "College is required for admin registration",
+  });
+}
 
     const user = await User.create({
       name,
       email,
-      password: hashedPassword,
-      college,
+      password,
       role: selectedRole,
+      college,
     });
-
-    const token = generateToken(user);
 
     res.status(201).json({
-      message: "User registered successfully",
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        college: user.college,
-      },
+      message:
+        user.role === "college_admin"
+          ? "Admin registered. Waiting for Super Admin approval."
+          : "Registration successful",
     });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
+    res.status(500).json({
+      message: "Server error during registration",
+    });
   }
 };
 
-/* ===============================
-   LOGIN USER
-   POST /api/auth/login
-================================= */
+/*
+========================================
+🔐 LOGIN USER
+========================================
+*/
 export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Include password even if select:false exists
+    // 1️⃣ Validate
+    if (!email || !password) {
+      return res.status(400).json({
+        message: "Email and password required",
+      });
+    }
+
+    // 2️⃣ Find user (include password)
     const user = await User.findOne({ email }).select("+password");
 
     if (!user) {
-      return res.status(400).json({ message: "Invalid credentials" });
+      return res.status(400).json({
+        message: "Invalid credentials",
+      });
     }
 
-    let isMatch = false;
-
-    // Support both secure model comparePassword OR bcrypt fallback
-    if (user.comparePassword) {
-      isMatch = await user.comparePassword(password);
-    } else {
-      isMatch = await bcrypt.compare(password, user.password);
-    }
+    // 3️⃣ Compare password
+    const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
-      return res.status(400).json({ message: "Invalid credentials" });
+      return res.status(400).json({
+        message: "Invalid credentials",
+      });
     }
 
-    const token = generateToken(user);
+    // 4️⃣ Check approval
+    if (user.status !== "approved") {
+      return res.status(403).json({
+        message: "Account pending approval by Super Admin",
+      });
+    }
 
-    res.json({
-      message: "Login successful",
+    // 5️⃣ Generate JWT
+    const token = jwt.sign(
+      {
+        id: user._id,
+        role: user.role,
+      },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "1d",
+      },
+    );
+
+    res.status(200).json({
       token,
       user: {
         id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
-        college: user.college,
       },
     });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
+    res.status(500).json({
+      message: "Server error during login",
+    });
   }
 };
 
-/* ===============================
-   GET CURRENT USER
-   GET /api/auth/me
-================================= */
+/*
+========================================
+👤 GET LOGGED-IN USER
+========================================
+*/
 export const getMe = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
+    const user = await User.findById(req.user._id).select("-password");
 
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
+    res.status(200).json(user);
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to fetch user",
+    });
+  }
+};
+
+/*
+========================================
+🛡 SUPER ADMIN APPROVES COLLEGE ADMIN
+========================================
+*/
+export const approveCollegeAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const admin = await User.findById(id);
+
+    if (!admin) {
+      return res.status(404).json({
+        message: "User not found",
+      });
     }
 
-    res.json({
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        college: user.college,
-      },
+    if (admin.role !== "college_admin") {
+      return res.status(400).json({
+        message: "Not a college admin",
+      });
+    }
+    if (admin.status === "approved") {
+  return res.status(400).json({
+    message: "Admin already approved",
+  });
+}
+
+
+    admin.status = "approved";
+    await admin.save();
+
+    res.status(200).json({
+      message: "College Admin approved successfully",
     });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
+    res.status(500).json({
+      message: "Approval failed",
+    });
+  }
+};
+/*
+========================================
+📋 GET PENDING COLLEGE ADMINS
+========================================
+*/
+export const getPendingAdmins = async (req, res) => {
+  try {
+    const admins = await User.find({
+      role: "college_admin",
+      status: "pending",
+    }).select("-password");
+
+    res.status(200).json(admins);
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to fetch pending admins",
+    });
   }
 };

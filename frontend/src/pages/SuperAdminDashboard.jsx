@@ -1,7 +1,8 @@
-import { useState } from "react";
 import Navbar from "../components/Navbar";
 import StatsCard from "../components/StatsCard";
 import { FiUsers, FiShield, FiSettings, FiActivity } from "react-icons/fi";
+import { useEffect, useState } from "react";
+import API from "../services/api";
 
 export default function SuperAdminDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -94,9 +95,88 @@ function Overview() {
   return <div>Platform-wide analytics and overview information.</div>;
 }
 
+
+
 function ManageAdmins() {
-  return <div>UI to create, edit, deactivate or remove admins.</div>;
+  const [pendingAdmins, setPendingAdmins] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const fetchPendingAdmins = async () => {
+    try {
+      setLoading(true);
+      const res = await API.get("/admin/pending-admins");
+      setPendingAdmins(res.data);
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to load admins");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const approveAdmin = async (id) => {
+    try {
+      await API.put(`/admin/approve/${id}`);
+      fetchPendingAdmins(); // refresh list
+    } catch (err) {
+      alert(err.response?.data?.message || "Approval failed");
+    }
+  };
+
+  useEffect(() => {
+    fetchPendingAdmins();
+  }, []);
+
+  if (loading) return <p>Loading pending admins...</p>;
+  if (error) return <p style={{ color: "red" }}>{error}</p>;
+
+  if (pendingAdmins.length === 0) {
+    return <p>No pending college admins.</p>;
+  }
+
+  return (
+    <div>
+      <h3 style={{ marginBottom: "15px" }}>Pending College Admins</h3>
+
+      {pendingAdmins.map((admin) => (
+        <div
+          key={admin._id}
+          style={{
+            padding: "12px",
+            border: "1px solid #e5e7eb",
+            borderRadius: "8px",
+            marginBottom: "10px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <div>
+            <strong>{admin.name}</strong>
+            <p style={{ margin: 0, fontSize: "14px", color: "#555" }}>
+              {admin.email} • {admin.college}
+            </p>
+          </div>
+
+          <button
+            onClick={() => approveAdmin(admin._id)}
+            style={{
+              backgroundColor: "#16a34a",
+              color: "white",
+              border: "none",
+              padding: "6px 12px",
+              borderRadius: "6px",
+              cursor: "pointer",
+            }}
+          >
+            Approve
+          </button>
+        </div>
+      ))}
+    </div>
+  );
 }
+
 
 function AllUsers() {
   return <div>View all users including students and admins.</div>;

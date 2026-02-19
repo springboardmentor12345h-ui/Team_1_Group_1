@@ -4,6 +4,7 @@ import "../auth.css";
 import { FiMail } from "react-icons/fi";
 import { loginUser } from "../services/api";
 import { useAuth } from "../context/AuthContext";
+import toast from "react-hot-toast";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -11,34 +12,38 @@ export default function Login() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");   // ⭐ NEW
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
-    setError("");   // clear old error
-
     if (!email || !password) {
-      setError("Please enter email and password");
+      toast.error("Please enter email and password");
       return;
     }
 
     try {
-      const res = await loginUser({ email, password });
+      setLoading(true);
+
+      const res = await loginUser({ email: email.trim(), password });
       const { token, user } = res.data;
 
       login(token, user);
 
+      toast.success("Login successful");
+
       if (user.role === "student") {
-  navigate("/dashboard/student");
-} else if (user.role === "college_admin") {
-  navigate("/dashboard/collegeadmin");
-} else if (user.role === "super_admin") {
-  navigate("/dashboard/superadmin");
-} else {
-  navigate("/");
-}
+        navigate("/dashboard/student");
+      } else if (user.role === "college_admin") {
+        navigate("/dashboard/collegeadmin");
+      } else if (user.role === "super_admin") {
+        navigate("/dashboard/superadmin");
+      } else {
+        navigate("/login");
+      }
 
     } catch (err) {
-      setError(err.response?.data?.message || "Login failed");
+      toast.error(err.response?.data?.message || "Login failed");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -52,18 +57,12 @@ export default function Login() {
         <h2>Welcome Back</h2>
         <p className="subtitle">Sign in to your account</p>
 
-        {/* ⭐ SIMPLE ERROR TEXT */}
-        {error && <p className="error-text">{error}</p>}
-
         <label>Email Address</label>
         <input
           type="email"
           placeholder="Enter your email"
           value={email}
-          onChange={(e) => {
-            setEmail(e.target.value);
-            setError("");   // clear error while typing
-          }}
+          onChange={(e) => setEmail(e.target.value)}
         />
 
         <label>Password</label>
@@ -71,14 +70,11 @@ export default function Login() {
           type="password"
           placeholder="Enter your password"
           value={password}
-          onChange={(e) => {
-            setPassword(e.target.value);
-            setError("");   // clear error while typing
-          }}
+          onChange={(e) => setPassword(e.target.value)}
         />
 
-        <button className="primary-btn" onClick={handleLogin}>
-          Login
+        <button className="primary-btn" onClick={handleLogin} disabled={loading}>
+          {loading ? "Logging in..." : "Login"}
         </button>
 
         <p className="switch-text">

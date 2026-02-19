@@ -3,13 +3,10 @@ import { useNavigate } from "react-router-dom";
 import "../auth.css";
 import { FiUser } from "react-icons/fi";
 import { registerUser } from "../services/api";
-import { useAuth } from "../context/AuthContext";
+import toast from "react-hot-toast";
 
 export default function Register() {
   const navigate = useNavigate();
-  const { login } = useAuth();
-
-  const [error, setError] = useState("");   // ⭐ NEW
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -21,7 +18,6 @@ export default function Register() {
   });
 
   const handleChange = (e) => {
-    setError("");   // clear error while typing
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
@@ -29,19 +25,16 @@ export default function Register() {
   };
 
   const handleRegister = async () => {
-    setError("");   // clear old error
-
     const { fullName, email, college, password, confirmPassword, role } =
       formData;
 
-    if (!fullName || !email || !college || !password || !confirmPassword)
- {
-      setError("Please fill all required fields");
+    if (!fullName || !email || !college || !password || !confirmPassword) {
+      toast.error("Please fill all required fields");
       return;
     }
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
+      toast.error("Passwords do not match");
       return;
     }
 
@@ -54,22 +47,17 @@ export default function Register() {
         role,
       });
 
-      const { token, user } = res.data;
-
-      login(token, user);
-
-      if (user.role === "student") {
-  navigate("/dashboard/student");
-} else if (user.role === "college_admin") {
-  navigate("/dashboard/collegeadmin");
-} else if (user.role === "super_admin") {
-  navigate("/dashboard/superadmin");
-} else {
-  navigate("/");
-}
+      if (role === "college_admin") {
+        toast("Registered successfully. Wait for Super Admin approval.", {
+          icon: "⏳",
+        });
+      } else {
+        toast.success("Registration successful. Redirecting to login...");
+        setTimeout(() => navigate("/login"), 1500);
+      }
 
     } catch (err) {
-      setError(err.response?.data?.message || "Registration failed");
+      toast.error(err.response?.data?.message || "Registration failed");
     }
   };
 
@@ -82,9 +70,6 @@ export default function Register() {
 
         <h2>Create Account</h2>
         <p className="subtitle">Join CampusEventHub</p>
-
-        {/* ⭐ INLINE ERROR MESSAGE */}
-        {error && <p className="error-text">{error}</p>}
 
         <label>Full Name</label>
         <input
