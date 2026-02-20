@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Assistant - CampusEventHub</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="bg-animation">
+        <div class="circle circle1"></div>
+        <div class="circle circle2"></div>
+        <div class="circle circle3"></div>
+        <div class="circle circle4"></div>
+    </div>
+
+    <div class="container">
+        <!-- Header -->
+        <div class="chat-header">
+            <div class="header-left">
+                <div class="bot-avatar-header">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
+                    </svg>
+                </div>
+                <div class="header-info">
+                    <h1>AI Assistant</h1>
+                    <span class="status-indicator">
+                        <span class="status-dot"></span>
+                        Online
+                    </span>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button id="clearBtn" class="clear-btn" title="Clear conversation">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                    </svg>
+                    Clear
+                </button>
+            </div>
+        </div>
+        
+        <!-- Chat Messages -->
+        <div class="chat-container" id="chatContainer">
+            <div class="welcome-message">
+                <div class="welcome-icon">🎓</div>
+                <h2>Welcome to CampusEventHub!</h2>
+                <p>Hi! I'm your AI Admin Assistant. I can help you with event registrations, browsing events, and navigating the platform. Are you a Student or College Admin?</p>
+            </div>
+        </div>
+        
+        <!-- Typing Indicator -->
+        <div class="typing-indicator" id="typingIndicator" style="display: none;">
+            <div class="typing-avatar">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
+                </svg>
+            </div>
+            <div class="typing-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+        
+        <!-- Input Area -->
+        <div class="input-container">
+            <form id="chatForm">
+                <div class="input-wrapper">
+                    <input 
+                        type="text" 
+                        id="messageInput" 
+                        placeholder="Type your message..." 
+                        autocomplete="off"
+                        required
+                    >
+                    <button type="submit" id="sendBtn" title="Send message">
+                        <span id="sendBtnText">
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                            </svg>
+                        </span>
+                        <span id="sendBtnLoader" class="loader" style="display: none;"></span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>
