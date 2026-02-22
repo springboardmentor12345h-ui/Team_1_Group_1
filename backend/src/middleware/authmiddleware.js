@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+
 // 🔐 Verify Token
 export const verifyToken = async (req, res, next) => {
   try {
@@ -9,7 +10,6 @@ export const verifyToken = async (req, res, next) => {
     }
 
     const token = authHeader.split(" ")[1];
-
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     const user = await User.findById(decoded.id).select("-password");
@@ -31,6 +31,7 @@ export const verifyToken = async (req, res, next) => {
     res.status(401).json({ message: "Invalid or expired token" });
   }
 };
+
 // 🎭 Role Authorization
 export const authorizeRoles = (...roles) => {
   return (req, res, next) => {
@@ -45,4 +46,25 @@ export const authorizeRoles = (...roles) => {
 
     next();
   };
+};
+
+export const optionalVerifyToken = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader) {
+    req.user = null;
+    return next();
+  }
+
+  try {
+    const token = authHeader.split(" ")[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id).select("-password");
+
+    req.user = user || null;
+  } catch (err) {
+    req.user = null;
+  }
+
+  next();
 };

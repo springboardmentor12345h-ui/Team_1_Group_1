@@ -7,17 +7,23 @@ import StudentDashboard from "./pages/StudentDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import SuperAdminDashboard from "./pages/SuperAdminDashboard";
 import CreateEvent from "./pages/CreateEvent";
-
+import Chatbot from "./components/Chatbot";
 
 function App() {
   return (
     <BrowserRouter>
+
+      {/* ✅ GLOBAL CHATBOT */}
+      <Chatbot />
+
       <Routes>
+
+        {/* Public Routes */}
         <Route path="/" element={<Home />} />
         <Route path="/register" element={<Register />} />
         <Route path="/login" element={<Login />} />
 
-        {/* Student */}
+        {/* Student Dashboard */}
         <Route
           path="/dashboard/student"
           element={
@@ -27,7 +33,7 @@ function App() {
           }
         />
 
-        {/* College Admin */}
+        {/* College Admin Dashboard */}
         <Route
           path="/dashboard/collegeadmin"
           element={
@@ -36,17 +42,18 @@ function App() {
             </ProtectedRoute>
           }
         />
+
+        {/* College Admin - Create Event */}
         <Route
-  path="/dashboard/collegeadmin/create-event"
-  element={
-    <ProtectedRoute roles={["college_admin"]}>
-      <CreateEvent />
-    </ProtectedRoute>
-  }
-/>
+          path="/dashboard/collegeadmin/create-event"
+          element={
+            <ProtectedRoute roles={["college_admin"]}>
+              <CreateEvent />
+            </ProtectedRoute>
+          }
+        />
 
-
-        {/* Super Admin */}
+        {/* Super Admin Dashboard */}
         <Route
           path="/dashboard/superadmin"
           element={
@@ -55,6 +62,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+
       </Routes>
     </BrowserRouter>
   );
