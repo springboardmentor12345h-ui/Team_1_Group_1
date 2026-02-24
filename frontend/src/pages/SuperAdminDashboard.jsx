@@ -1,102 +1,93 @@
 import Navbar from "../components/Navbar";
 import StatsCard from "../components/StatsCard";
-import { FiUsers, FiShield, FiSettings, FiActivity } from "react-icons/fi";
+import Sidebar from "../components/Sidebar";
+import {
+  FiUsers,
+  FiShield,
+  FiSettings,
+  FiActivity,
+  FiHome,
+  FiUserCheck,
+  FiFileText,
+} from "react-icons/fi";
 import { useEffect, useState } from "react";
 import API from "../services/api";
 
 export default function SuperAdminDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <>
-      <Navbar />
+    <div className="h-screen flex flex-col overflow-hidden">
+      <Navbar toggleSidebar={() => setMobileOpen(true)} />
 
-      <div style={{ padding: "40px" }}>
-        <h2 style={{ marginBottom: "20px" }}>Super Admin Dashboard</h2>
+      <div className="flex flex-1 pt-16 overflow-hidden">
+        <Sidebar
+          title="Super Admin"
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          mobileOpen={mobileOpen}
+          setMobileOpen={setMobileOpen}
+          collapsed={collapsed}
+          setCollapsed={setCollapsed}
+          items={[
+            { key: "overview", label: "Overview", icon: <FiHome /> },
+            { key: "admins", label: "Manage Admins", icon: <FiUserCheck /> },
+            { key: "users", label: "All Users", icon: <FiUsers /> },
+            { key: "settings", label: "Platform Settings", icon: <FiSettings /> },
+            { key: "logs", label: "System Logs", icon: <FiFileText /> },
+          ]}
+        />
 
-        {/* Stats Section */}
-        <div style={{ display: "flex", gap: "20px", flexWrap: "wrap" }}>
-          <StatsCard
-            title="Total Admins"
-            value="8"
-            color="#dc2626"
-            icon={<FiShield size={22} />}
-          />
-          <StatsCard
-            title="Total Students"
-            value="1,250"
-            color="#2563eb"
-            icon={<FiUsers size={22} />}
-          />
-          <StatsCard
-            title="Active Sessions"
-            value="342"
-            color="#16a34a"
-            icon={<FiActivity size={22} />}
-          />
-          <StatsCard
-            title="System Status"
-            value="Healthy"
-            color="#9333ea"
-            icon={<FiSettings size={22} />}
-          />
-        </div>
-
-        {/* Tabs */}
-        <div
-          style={{
-            marginTop: "35px",
-            display: "flex",
-            gap: "30px",
-            borderBottom: "2px solid #e5e7eb",
-          }}
+        <main
+          className={`
+            flex-1 overflow-y-auto bg-gray-50
+            transition-all duration-300
+            ${collapsed ? "md:ml-[68px]" : "md:ml-64"}
+          `}
         >
-          <TabButton label="Overview" active={activeTab==="overview"} onClick={()=>setActiveTab("overview")} />
-          <TabButton label="Manage Admins" active={activeTab==="admins"} onClick={()=>setActiveTab("admins")} />
-          <TabButton label="All Users" active={activeTab==="users"} onClick={()=>setActiveTab("users")} />
-          <TabButton label="Platform Settings" active={activeTab==="settings"} onClick={()=>setActiveTab("settings")} />
-          <TabButton label="System Logs" active={activeTab==="logs"} onClick={()=>setActiveTab("logs")} />
-        </div>
+          <div className="p-5 sm:p-8">
+            <h2 className="mb-6 text-xl sm:text-2xl font-semibold text-gray-800">
+              Super Admin Dashboard
+            </h2>
 
-        <div style={{ marginTop: "30px" }}>
-          {activeTab === "overview" && <Overview />}
-          {activeTab === "admins" && <ManageAdmins />}
-          {activeTab === "users" && <AllUsers />}
-          {activeTab === "settings" && <PlatformSettings />}
-          {activeTab === "logs" && <SystemLogs />}
-        </div>
+            {activeTab === "overview" && (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                  <StatsCard title="Total Admins" value="8" color="#dc2626" icon={<FiShield size={22} />} />
+                  <StatsCard title="Total Students" value="1,250" color="#2563eb" icon={<FiUsers size={22} />} />
+                  <StatsCard title="Active Sessions" value="342" color="#16a34a" icon={<FiActivity size={22} />} />
+                  <StatsCard title="System Status" value="Healthy" color="#9333ea" icon={<FiSettings size={22} />} />
+                </div>
+                <Overview />
+              </>
+            )}
+
+            {activeTab === "admins" && <ManageAdmins />}
+            {activeTab === "users" && <AllUsers />}
+            {activeTab === "settings" && <PlatformSettings />}
+            {activeTab === "logs" && <SystemLogs />}
+          </div>
+        </main>
       </div>
-    </>
+    </div>
   );
 }
 
-function TabButton({ label, active, onClick }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        padding: "10px 0",
-        border: "none",
-        borderBottom: active ? "3px solid #1F3C88" : "3px solid transparent",
-        backgroundColor: "transparent",
-        fontWeight: active ? "600" : "500",
-        cursor: "pointer",
-        color: active ? "#1F3C88" : "#555",
-      }}
-    >
-      {label}
-    </button>
-  );
-}
-
-/* Sections */
-
+/* ================= OVERVIEW ================= */
 function Overview() {
-  return <div>Platform-wide analytics and overview information.</div>;
+  return (
+    <div className="bg-white p-6 rounded-xl shadow-md shadow-black/5">
+      <h3 className="mb-4 text-lg font-semibold">Platform Overview</h3>
+      <p className="text-gray-600 text-sm">
+        Platform-wide analytics, system performance, and administrative insights.
+      </p>
+    </div>
+  );
 }
 
-
-
+/* ================= MANAGE ADMINS ================= */
 function ManageAdmins() {
   const [pendingAdmins, setPendingAdmins] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -117,7 +108,7 @@ function ManageAdmins() {
   const approveAdmin = async (id) => {
     try {
       await API.put(`/admin/approve/${id}`);
-      fetchPendingAdmins(); // refresh list
+      fetchPendingAdmins();
     } catch (err) {
       alert(err.response?.data?.message || "Approval failed");
     }
@@ -127,47 +118,25 @@ function ManageAdmins() {
     fetchPendingAdmins();
   }, []);
 
-  if (loading) return <p>Loading pending admins...</p>;
-  if (error) return <p style={{ color: "red" }}>{error}</p>;
-
-  if (pendingAdmins.length === 0) {
-    return <p>No pending college admins.</p>;
-  }
-
   return (
-    <div>
-      <h3 style={{ marginBottom: "15px" }}>Pending College Admins</h3>
+    <div className="bg-white p-5 sm:p-6 rounded-xl shadow-md shadow-black/5">
+      <h3 className="mb-5 text-lg font-semibold">Pending College Admins</h3>
+
+      {loading && <p className="text-gray-500">Loading pending admins...</p>}
+      {error && <p className="text-red-500">{error}</p>}
+      {!loading && !error && pendingAdmins.length === 0 && (
+        <p className="text-gray-500">No pending college admins.</p>
+      )}
 
       {pendingAdmins.map((admin) => (
-        <div
-          key={admin._id}
-          style={{
-            padding: "12px",
-            border: "1px solid #e5e7eb",
-            borderRadius: "8px",
-            marginBottom: "10px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <div>
-            <strong>{admin.name}</strong>
-            <p style={{ margin: 0, fontSize: "14px", color: "#555" }}>
-              {admin.email} • {admin.college}
-            </p>
+        <div key={admin._id} className="p-4 border border-gray-200 rounded-lg mb-3 flex justify-between items-center gap-3">
+          <div className="min-w-0">
+            <p className="font-semibold">{admin.name}</p>
+            <p className="text-sm text-gray-600 truncate">{admin.email} • {admin.college}</p>
           </div>
-
           <button
             onClick={() => approveAdmin(admin._id)}
-            style={{
-              backgroundColor: "#16a34a",
-              color: "white",
-              border: "none",
-              padding: "6px 12px",
-              borderRadius: "6px",
-              cursor: "pointer",
-            }}
+            className="bg-green-600 text-white px-4 py-1.5 rounded-md hover:bg-green-700 transition text-sm flex-shrink-0"
           >
             Approve
           </button>
@@ -177,15 +146,32 @@ function ManageAdmins() {
   );
 }
 
-
+/* ================= ALL USERS ================= */
 function AllUsers() {
-  return <div>View all users including students and admins.</div>;
+  return (
+    <div className="bg-white p-6 rounded-xl shadow-md shadow-black/5">
+      <h3 className="mb-4 text-lg font-semibold">All Platform Users</h3>
+      <p className="text-gray-600 text-sm">View and manage all registered students and admins.</p>
+    </div>
+  );
 }
 
+/* ================= PLATFORM SETTINGS ================= */
 function PlatformSettings() {
-  return <div>Configure platform options and maintenance settings.</div>;
+  return (
+    <div className="bg-white p-6 rounded-xl shadow-md shadow-black/5">
+      <h3 className="mb-4 text-lg font-semibold">Platform Settings</h3>
+      <p className="text-gray-600 text-sm">Configure platform-level options, maintenance mode, and global settings.</p>
+    </div>
+  );
 }
 
+/* ================= SYSTEM LOGS ================= */
 function SystemLogs() {
-  return <div>Complete system activity logs and monitoring.</div>;
+  return (
+    <div className="bg-white p-6 rounded-xl shadow-md shadow-black/5">
+      <h3 className="mb-4 text-lg font-semibold">System Logs</h3>
+      <p className="text-gray-600 text-sm">Monitor complete system activity and platform logs.</p>
+    </div>
+  );
 }

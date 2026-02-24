@@ -1,198 +1,95 @@
 // AdminDashboard.jsx
 import { useNavigate } from "react-router-dom";
-
 import { useState } from "react";
 import Navbar from "../components/Navbar";
 import StatsCard from "../components/StatsCard";
+import Sidebar from "../components/Sidebar";
 import {
   FiUsers,
   FiFileText,
   FiCheckCircle,
   FiAlertTriangle,
+  FiUser,
+  FiCalendar,
+  FiHome,
 } from "react-icons/fi";
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <>
-      <Navbar />
+    <div className="h-screen flex flex-col overflow-hidden">
+      <Navbar toggleSidebar={() => setMobileOpen(true)} />
 
-      <div style={{ padding: "40px" }}>
-        <h2 style={{ marginBottom: "20px" }}>Admin Dashboard</h2>
+      <div className="flex flex-1 pt-16 overflow-hidden">
+        <Sidebar
+          title="Admin Panel"
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          mobileOpen={mobileOpen}
+          setMobileOpen={setMobileOpen}
+          collapsed={collapsed}
+          setCollapsed={setCollapsed}
+          items={[
+            { key: "overview", label: "Overview", icon: <FiHome /> },
+            { key: "users", label: "User Management", icon: <FiUsers /> },
+            { key: "events", label: "Event Management", icon: <FiCalendar /> },
+            { key: "registrations", label: "Registrations", icon: <FiCheckCircle /> },
+            { key: "logs", label: "Admin Logs", icon: <FiFileText /> },
+          ]}
+        />
 
-        {/* Stats Section */}
-        <div
-          style={{
-            display: "flex",
-            gap: "20px",
-            flexWrap: "wrap",
-          }}
+        <main
+          className={`
+            flex-1 overflow-y-auto overflow-x-hidden bg-gray-50
+            transition-all duration-300
+            ${collapsed ? "md:ml-[68px]" : "md:ml-64"}
+          `}
         >
-          <StatsCard
-            title="Total Events"
-            value="24"
-            color="#16a34a"
-            icon={<FiFileText size={22} />}
-          />
+          <div className="p-5 sm:p-8">
+            <h2 className="text-xl sm:text-2xl font-semibold mb-6 text-gray-800">
+              Admin Dashboard
+            </h2>
 
-          <StatsCard
-            title="Active Users"
-            value="320"
-            color="#2563eb"
-            icon={<FiUsers size={22} />}
-          />
+            {activeTab === "overview" && (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                  <StatsCard title="Total Events" value="24" color="#16a34a" icon={<FiFileText size={22} />} />
+                  <StatsCard title="Active Users" value="320" color="#2563eb" icon={<FiUsers size={22} />} />
+                  <StatsCard title="Registrations" value="890" color="#f59e0b" icon={<FiCheckCircle size={22} />} />
+                  <StatsCard title="Pending Reviews" value="6" color="#dc2626" icon={<FiAlertTriangle size={22} />} />
+                </div>
+                <OverviewSection />
+              </>
+            )}
 
-          <StatsCard
-            title="Registrations"
-            value="890"
-            color="#f59e0b"
-            icon={<FiCheckCircle size={22} />}
-          />
-
-          <StatsCard
-            title="Pending Reviews"
-            value="6"
-            color="#dc2626"
-            icon={<FiAlertTriangle size={22} />}
-          />
-        </div>
-
-        {/* Tabs */}
-        <div
-          style={{
-            marginTop: "35px",
-            display: "flex",
-            gap: "30px",
-            borderBottom: "2px solid #e5e7eb",
-          }}
-        >
-          <TabButton
-            label="Overview"
-            active={activeTab === "overview"}
-            onClick={() => setActiveTab("overview")}
-          />
-          <TabButton
-            label="User Management"
-            active={activeTab === "users"}
-            onClick={() => setActiveTab("users")}
-          />
-          <TabButton
-            label="Event Management"
-            active={activeTab === "events"}
-            onClick={() => setActiveTab("events")}
-          />
-          <TabButton
-            label="Registrations"
-            active={activeTab === "registrations"}
-            onClick={() => setActiveTab("registrations")}
-          />
-
-          <TabButton
-            label="Admin Logs"
-            active={activeTab === "logs"}
-            onClick={() => setActiveTab("logs")}
-          />
-
-
-        </div>
-
-        {/* Tab Content */}
-        <div style={{ marginTop: "30px" }}>
-          {activeTab === "overview" && <OverviewSection />}
-          {activeTab === "users" && <UserManagement />}
-          {activeTab === "events" && <EventManagement />}
-          {activeTab === "registrations" && <Registrations />}
-          {activeTab === "logs" && <AdminLogs />}
-        </div>
-
+            {activeTab === "users" && <UserManagement />}
+            {activeTab === "events" && <EventManagement />}
+            {activeTab === "registrations" && <Registrations />}
+            {activeTab === "logs" && <AdminLogs />}
+          </div>
+        </main>
       </div>
-    </>
-  );
-}
-
-/* ---------- TAB BUTTON ---------- */
-function TabButton({ label, active, onClick }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        padding: "10px 0",
-        border: "none",
-        borderBottom: active ? "3px solid #1F3C88" : "3px solid transparent",
-        backgroundColor: "transparent",
-        fontWeight: active ? "600" : "500",
-        cursor: "pointer",
-        color: active ? "#1F3C88" : "#555",
-        transition: "0.2s ease",
-      }}
-    >
-      {label}
-    </button>
+    </div>
   );
 }
 
 /* ---------- OVERVIEW SECTION ---------- */
 function OverviewSection() {
   return (
-    <div
-      style={{
-        display: "flex",
-        gap: "20px",
-        flexWrap: "wrap",
-      }}
-    >
-      {/* Recent Events */}
-      <div
-        style={{
-          flex: 1,
-          minWidth: "300px",
-          backgroundColor: "#ffffff",
-          padding: "25px",
-          borderRadius: "12px",
-          boxShadow: "0 8px 20px rgba(0,0,0,0.06)",
-        }}
-      >
-        <h3 style={{ marginBottom: "20px" }}>Recent Events</h3>
-
-        <EventItem
-          title="Inter-College Hackathon 2024"
-          subtitle="tech-university · 127 participants"
-          tag="hackathon"
-        />
-
-        <EventItem
-          title="Cultural Fest - Harmony 2024"
-          subtitle="arts-college · 342 participants"
-          tag="cultural"
-        />
-
-        <EventItem
-          title="Basketball Championship"
-          subtitle="sports-university · 160 participants"
-          tag="sports"
-        />
-
-        <EventItem
-          title="Web Development Workshop"
-          subtitle="tech-university · 65 participants"
-          tag="workshop"
-        />
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 w-full">
+      <div className="bg-white p-6 rounded-xl shadow-lg shadow-black/5 w-full min-w-0">
+        <h3 className="mb-5 font-semibold">Recent Events</h3>
+        <EventItem title="Inter-College Hackathon 2024" subtitle="tech-university · 127 participants" tag="hackathon" />
+        <EventItem title="Cultural Fest - Harmony 2024" subtitle="arts-college · 342 participants" tag="cultural" />
+        <EventItem title="Basketball Championship" subtitle="sports-university · 160 participants" tag="sports" />
+        <EventItem title="Web Development Workshop" subtitle="tech-university · 65 participants" tag="workshop" />
       </div>
 
-      {/* System Health */}
-      <div
-        style={{
-          flex: 1,
-          minWidth: "300px",
-          backgroundColor: "#ffffff",
-          padding: "25px",
-          borderRadius: "12px",
-          boxShadow: "0 8px 20px rgba(0,0,0,0.06)",
-        }}
-      >
-        <h3 style={{ marginBottom: "20px" }}>System Health</h3>
-
+      <div className="bg-white p-6 rounded-xl shadow-lg shadow-black/5 w-full min-w-0">
+        <h3 className="mb-5 font-semibold">System Health</h3>
         <HealthRow label="Server Status" value="Healthy" good />
         <HealthRow label="Database" value="Connected" good />
         <HealthRow label="API Response" value="152ms" good />
@@ -204,33 +101,12 @@ function OverviewSection() {
 
 function EventItem({ title, subtitle, tag }) {
   return (
-    <div
-      style={{
-        marginBottom: "15px",
-        paddingBottom: "12px",
-        borderBottom: "1px solid #f0f0f0",
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-      }}
-    >
-      <div>
-        <div style={{ fontWeight: "600" }}>{title}</div>
-        <div style={{ fontSize: "13px", color: "#666" }}>
-          {subtitle}
-        </div>
+    <div className="mb-4 pb-3 border-b border-gray-100 flex justify-between items-center gap-3">
+      <div className="min-w-0">
+        <div className="font-semibold truncate">{title}</div>
+        <div className="text-[13px] text-gray-500 truncate">{subtitle}</div>
       </div>
-
-      <span
-        style={{
-          fontSize: "12px",
-          padding: "4px 10px",
-          borderRadius: "20px",
-          backgroundColor: "#e0ecff",
-          color: "#1F3C88",
-          fontWeight: "500",
-        }}
-      >
+      <span className="text-xs px-3 py-1 rounded-full bg-blue-100 text-[#1F3C88] font-medium flex-shrink-0">
         {tag}
       </span>
     </div>
@@ -239,157 +115,56 @@ function EventItem({ title, subtitle, tag }) {
 
 function HealthRow({ label, value, good }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        marginBottom: "12px",
-      }}
-    >
-      <span style={{ color: "#555" }}>{label}</span>
-      <span
-        style={{
-          color: good ? "#16a34a" : "#dc2626",
-          fontWeight: "600",
-        }}
-      >
-        {value}
-      </span>
+    <div className="flex justify-between mb-3">
+      <span className="text-gray-600">{label}</span>
+      <span className={`${good ? "text-green-600" : "text-red-600"} font-semibold`}>{value}</span>
     </div>
   );
 }
 
-
 /* ---------- USER MANAGEMENT ---------- */
-/* ---------- USER MANAGEMENT ---------- */
-import { FiUser } from "react-icons/fi";
-
 function UserManagement() {
   const users = [
-    {
-      name: "John Doe",
-      role: "Student",
-      college: "Tech University",
-      lastActive: "2 hours ago",
-      status: "Active",
-    },
-    {
-      name: "Sarah Wilson",
-      role: "Organizer",
-      college: "Arts College",
-      lastActive: "1 day ago",
-      status: "Active",
-    },
+    { name: "John Doe", role: "Student", college: "Tech University", lastActive: "2 hours ago", status: "Active" },
+    { name: "Sarah Wilson", role: "Organizer", college: "Arts College", lastActive: "1 day ago", status: "Active" },
   ];
 
   return (
-    <div
-      style={{
-        backgroundColor: "#ffffff",
-        padding: "25px",
-        borderRadius: "12px",
-        boxShadow: "0 6px 18px rgba(0,0,0,0.06)",
-      }}
-    >
-      {/* Header */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "20px",
-        }}
-      >
-        <h3 style={{ margin: 0 }}>User Activity</h3>
-        <button
-          style={{
-            background: "transparent",
-            border: "none",
-            color: "#1F3C88",
-            fontWeight: "500",
-            cursor: "pointer",
-          }}
-        >
-          View All Users
-        </button>
+    <div className="bg-white p-5 sm:p-6 rounded-xl shadow-md shadow-black/5 overflow-x-auto">
+      <div className="flex justify-between items-center mb-5">
+        <h3 className="font-semibold">User Activity</h3>
+        <button className="text-[#1F3C88] font-medium text-sm">View All Users</button>
       </div>
 
-      {/* Table */}
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <table className="w-full border-collapse min-w-[500px]">
         <thead>
-          <tr
-            style={{
-              textAlign: "left",
-              fontSize: "14px",
-              color: "#6b7280",
-              borderBottom: "1px solid #e5e7eb",
-            }}
-          >
-            <th>User</th>
-            <th>Role</th>
-            <th>College</th>
-            <th>Last Active</th>
-            <th>Status</th>
+          <tr className="text-left text-sm text-gray-500 border-b border-gray-200">
+            <th className="pb-3">User</th>
+            <th className="pb-3">Role</th>
+            <th className="pb-3">College</th>
+            <th className="pb-3">Last Active</th>
+            <th className="pb-3">Status</th>
           </tr>
         </thead>
-
         <tbody>
           {users.map((user, index) => (
-            <tr
-              key={index}
-              style={{
-                borderBottom: "1px solid #f1f1f1",
-                height: "60px",
-              }}
-            >
-              {/* USER WITH ICON */}
-              <td style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <div
-                  style={{
-                    width: "34px",
-                    height: "34px",
-                    borderRadius: "50%",
-                    backgroundColor: "#e0e7ff",
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    color: "#1F3C88",
-                  }}
-                >
+            <tr key={index} className="border-b border-gray-100 h-[60px]">
+              <td className="flex items-center gap-3 h-[60px]">
+                <div className="w-[34px] h-[34px] rounded-full bg-indigo-100 flex justify-center items-center text-[#1F3C88] flex-shrink-0">
                   <FiUser size={16} />
                 </div>
                 {user.name}
               </td>
-
-              {/* ROLE BADGE */}
               <td>
-                <span
-                  style={{
-                    padding: "5px 10px",
-                    borderRadius: "20px",
-                    fontSize: "12px",
-                    fontWeight: "500",
-                    backgroundColor:
-                      user.role === "Student"
-                        ? "#d1fae5"
-                        : "#dbeafe",
-                    color:
-                      user.role === "Student"
-                        ? "#065f46"
-                        : "#1e40af",
-                  }}
-                >
+                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                  user.role === "Student" ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800"
+                }`}>
                   {user.role}
                 </span>
               </td>
-
-              <td>{user.college}</td>
-              <td style={{ color: "#6b7280" }}>{user.lastActive}</td>
-
-              {/* STATUS */}
-              <td style={{ color: "#16a34a", fontWeight: "500" }}>
-                {user.status}
-              </td>
+              <td className="text-sm">{user.college}</td>
+              <td className="text-gray-500 text-sm">{user.lastActive}</td>
+              <td className="text-green-600 font-medium text-sm">{user.status}</td>
             </tr>
           ))}
         </tbody>
@@ -398,201 +173,50 @@ function UserManagement() {
   );
 }
 
-
 /* ---------- EVENT MANAGEMENT ---------- */
-import { FiCalendar } from "react-icons/fi";
-
 function EventManagement() {
-
   const navigate = useNavigate();
 
   const events = [
-    {
-      title: "Inter-College Hackathon 2024",
-      college: "Tech University",
-      category: "hackathon",
-      participants: 127,
-    },
-    {
-      title: "Cultural Fest - Harmony 2024",
-      college: "Arts College",
-      category: "cultural",
-      participants: 342,
-    },
-    {
-      title: "Basketball Championship",
-      college: "Sports University",
-      category: "sports",
-      participants: 160,
-    },
-    {
-      title: "Web Development Workshop",
-      college: "Tech University",
-      category: "workshop",
-      participants: 65,
-    },
+    { title: "Inter-College Hackathon 2024", college: "Tech University", category: "hackathon", participants: 127 },
+    { title: "Cultural Fest - Harmony 2024", college: "Arts College", category: "cultural", participants: 342 },
+    { title: "Basketball Championship", college: "Sports University", category: "sports", participants: 160 },
+    { title: "Web Development Workshop", college: "Tech University", category: "workshop", participants: 65 },
   ];
 
   return (
-    <div
-      style={{
-        backgroundColor: "#ffffff",
-        padding: "25px",
-        borderRadius: "12px",
-        boxShadow: "0 6px 18px rgba(0,0,0,0.06)",
-      }}
-    >
-      {/* Header */}
-      <div
-  style={{
-    display: "flex",
-    justifyContent: "space-between",
-    marginBottom: "20px",
-  }}
->
-  <h3>Event Management</h3>
-
-  {/* RIGHT SIDE ACTIONS */}
-  {/* RIGHT SIDE ACTION BUTTONS */}
-<div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-  
-  {/* Approve Pending */}
-  <button
-    style={{
-      backgroundColor: "#e0ecff",
-      color: "#1F3C88",
-      border: "none",
-      padding: "7px 12px",
-      borderRadius: "8px",
-      cursor: "pointer",
-      fontSize: "13px",
-      fontWeight: "500",
-    }}
-    onClick={() => alert("Pending approvals view coming soon")}
-  >
-    Approve Pending
-  </button>
-
-  {/* Flagged Events */}
-  <button
-    style={{
-      backgroundColor: "#fee2e2",
-      color: "#dc2626",
-      border: "none",
-      padding: "7px 12px",
-      borderRadius: "8px",
-      cursor: "pointer",
-      fontSize: "13px",
-      fontWeight: "500",
-    }}
-    onClick={() => alert("Flagged events view coming soon")}
-  >
-    Flagged Events
-  </button>
-
-  {/* Create Event */}
-  <button
-    style={{
-      backgroundColor: "#1F3C88",
-      color: "#fff",
-      border: "none",
-      padding: "8px 14px",
-      borderRadius: "8px",
-      cursor: "pointer",
-      fontSize: "14px",
-      fontWeight: "600",
-    }}
-    onClick={() => navigate("/dashboard/collegeadmin/create-event")}
-
-  >
-    + Create Event
-  </button>
-</div>
-
-</div>
-
-
-      {/* Event Cards */}
-      {events.map((event, index) => (
-        <div
-          key={index}
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            padding: "15px",
-            border: "1px solid #e5e7eb",
-            borderRadius: "10px",
-            marginBottom: "15px",
-            transition: "0.2s ease",
-          }}
+    <div className="bg-white p-5 sm:p-6 rounded-xl shadow-md shadow-black/5">
+      <div className="flex justify-between mb-5 items-center">
+        <h3 className="font-semibold">Event Management</h3>
+        <button
+          onClick={() => navigate("/dashboard/collegeadmin/create-event")}
+          className="bg-[#1F3C88] text-white px-4 py-2 rounded-md font-semibold text-sm"
         >
-          {/* Left Side */}
-          <div style={{ display: "flex", gap: "15px", alignItems: "center" }}>
-            <div
-              style={{
-                width: "45px",
-                height: "45px",
-                borderRadius: "8px",
-                backgroundColor: "#eef2ff",
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                color: "#1F3C88",
-              }}
-            >
+          + Create Event
+        </button>
+      </div>
+
+      {events.map((event, index) => (
+        <div key={index} className="flex justify-between items-center p-4 border border-gray-200 rounded-lg mb-4 gap-3">
+          <div className="flex gap-4 items-center min-w-0">
+            <div className="w-[45px] h-[45px] rounded-md bg-indigo-50 flex justify-center items-center text-[#1F3C88] flex-shrink-0">
               <FiCalendar size={20} />
             </div>
-
-            <div>
-              <div style={{ fontWeight: "600" }}>{event.title}</div>
-              <div style={{ fontSize: "13px", color: "#6b7280" }}>
-                {event.college} • {event.participants} participants
-              </div>
+            <div className="min-w-0">
+              <div className="font-semibold truncate">{event.title}</div>
+              <div className="text-sm text-gray-500 truncate">{event.college} • {event.participants} participants</div>
             </div>
           </div>
-
-          {/* Right Side */}
-          <div style={{ display: "flex", gap: "15px", alignItems: "center" }}>
-            <span
-              style={{
-                backgroundColor: "#dbeafe",
-                color: "#1e40af",
-                padding: "5px 10px",
-                borderRadius: "20px",
-                fontSize: "12px",
-                fontWeight: "500",
-              }}
-            >
-              {event.category}
-            </span>
-
-            <span
-              style={{
-                color: "#2563eb",
-                fontSize: "14px",
-                cursor: "pointer",
-              }}
-            >
-              View
-            </span>
-
-            <span
-              style={{
-                color: "#dc2626",
-                fontSize: "14px",
-                cursor: "pointer",
-              }}
-            >
-              Actions
-            </span>
-          </div>
+          <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-medium flex-shrink-0">
+            {event.category}
+          </span>
         </div>
       ))}
     </div>
   );
 }
 
+/* ---------- REGISTRATIONS ---------- */
 function Registrations() {
   const registrations = [
     { name: "Rahul", event: "Hackathon 2024", college: "ABC College", status: "Approved" },
@@ -601,55 +225,19 @@ function Registrations() {
   ];
 
   return (
-    <div
-      style={{
-        backgroundColor: "#ffffff",
-        padding: "25px",
-        borderRadius: "12px",
-        boxShadow: "0 6px 18px rgba(0,0,0,0.06)",
-      }}
-    >
-      <h3 style={{ marginBottom: "20px" }}>Event Registrations</h3>
-
+    <div className="bg-white p-5 sm:p-6 rounded-xl shadow-md shadow-black/5">
+      <h3 className="mb-5 text-lg font-semibold">Event Registrations</h3>
       {registrations.map((reg, index) => (
-        <div
-          key={index}
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            padding: "15px",
-            border: "1px solid #e5e7eb",
-            borderRadius: "10px",
-            marginBottom: "12px",
-          }}
-        >
-          <div>
-            <div style={{ fontWeight: "600" }}>{reg.name}</div>
-            <div style={{ fontSize: "13px", color: "#6b7280" }}>
-              {reg.event} • {reg.college}
-            </div>
+        <div key={index} className="flex justify-between p-4 border border-gray-200 rounded-lg mb-3 gap-3">
+          <div className="min-w-0">
+            <div className="font-semibold">{reg.name}</div>
+            <div className="text-sm text-gray-500 truncate">{reg.event} • {reg.college}</div>
           </div>
-
-          <span
-            style={{
-              padding: "6px 12px",
-              borderRadius: "20px",
-              fontSize: "12px",
-              fontWeight: "500",
-              backgroundColor:
-                reg.status === "Approved"
-                  ? "#dcfce7"
-                  : reg.status === "Pending"
-                  ? "#fef9c3"
-                  : "#fee2e2",
-              color:
-                reg.status === "Approved"
-                  ? "#166534"
-                  : reg.status === "Pending"
-                  ? "#92400e"
-                  : "#991b1b",
-            }}
-          >
+          <span className={`px-3 py-1 rounded-full text-xs font-medium self-center flex-shrink-0 ${
+            reg.status === "Approved" ? "bg-green-100 text-green-800"
+            : reg.status === "Pending" ? "bg-yellow-100 text-yellow-800"
+            : "bg-red-100 text-red-800"
+          }`}>
             {reg.status}
           </span>
         </div>
@@ -658,6 +246,7 @@ function Registrations() {
   );
 }
 
+/* ---------- ADMIN LOGS ---------- */
 function AdminLogs() {
   const logs = [
     { action: "Approved event Hackathon 2024", admin: "Manikanta", time: "2 hours ago" },
@@ -666,48 +255,14 @@ function AdminLogs() {
   ];
 
   return (
-    <div
-      style={{
-        backgroundColor: "#ffffff",
-        padding: "25px",
-        borderRadius: "12px",
-        boxShadow: "0 6px 18px rgba(0,0,0,0.06)",
-      }}
-    >
-      <h3 style={{ marginBottom: "20px" }}>Admin Activity Logs</h3>
-
+    <div className="bg-white p-5 sm:p-6 rounded-xl shadow-md shadow-black/5">
+      <h3 className="mb-5 text-lg font-semibold">Admin Activity Logs</h3>
       {logs.map((log, index) => (
-        <div
-          key={index}
-          style={{
-            padding: "15px",
-            borderBottom: "1px solid #e5e7eb",
-          }}
-        >
-          <div style={{ fontWeight: "500" }}>{log.action}</div>
-          <div style={{ fontSize: "13px", color: "#6b7280" }}>
-            By {log.admin} • {log.time}
-          </div>
+        <div key={index} className="p-4 border-b border-gray-200">
+          <div className="font-medium">{log.action}</div>
+          <div className="text-sm text-gray-500">By {log.admin} • {log.time}</div>
         </div>
       ))}
-    </div>
-  );
-}
-
-
-/* ---------- TABLE WRAPPER ---------- */
-function TableWrapper({ title, children }) {
-  return (
-    <div
-      style={{
-        backgroundColor: "#ffffff",
-        padding: "25px",
-        borderRadius: "12px",
-        boxShadow: "0 8px 20px rgba(0,0,0,0.06)",
-      }}
-    >
-      <h3 style={{ marginBottom: "20px" }}>{title}</h3>
-      {children}
     </div>
   );
 }

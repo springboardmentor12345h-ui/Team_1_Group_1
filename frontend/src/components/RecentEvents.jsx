@@ -6,30 +6,16 @@ export default function RecentEvents() {
   ];
 
   return (
-    <div
-      style={{
-        backgroundColor: "#ffffff",
-        padding: "20px",
-        borderRadius: "10px",
-        boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
-        flex: 2,
-        minWidth: "350px",
-      }}
-    >
-      <h3 style={{ marginBottom: "15px" }}>Recent Events</h3>
+    <div className="bg-white p-5 rounded-xl shadow-md shadow-black/5 w-full">
+      <h3 className="font-semibold mb-4">Recent Events</h3>
 
       {dummyEvents.map((event, index) => (
         <div
           key={index}
-          style={{
-            padding: "10px 0",
-            borderBottom: "1px solid #eee",
-          }}
+          className="py-3 border-b border-gray-100 last:border-b-0"
         >
-          <strong>{event.name}</strong>
-          <div style={{ fontSize: "13px", color: "#777" }}>
-            {event.date}
-          </div>
+          <p className="font-semibold text-sm">{event.name}</p>
+          <p className="text-xs text-gray-500 mt-0.5">{event.date}</p>
         </div>
       ))}
     </div>
