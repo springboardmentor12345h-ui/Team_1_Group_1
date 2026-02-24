@@ -1,15 +1,22 @@
 import { useState } from "react";
+import axios from "axios";
 import Navbar from "../components/Navbar";
 
 export default function CreateEvent() {
+
   const [formData, setFormData] = useState({
     title: "",
     category: "",
-    date: "",
+    startDate: "",
+    endDate: "",
     location: "",
     description: "",
   });
 
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  // Handle Input Change
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -17,103 +24,136 @@ export default function CreateEvent() {
     });
   };
 
-  const handleSubmit = (e) => {
+  // Basic Validation
+  const validateForm = () => {
+    if (formData.title.length < 3) {
+      return "Title must be at least 3 characters";
+    }
+
+    if (new Date(formData.startDate) > new Date(formData.endDate)) {
+      return "End date must be after start date";
+    }
+
+    return null;
+  };
+
+  // Submit Handler
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    alert("Event will be created (backend coming next)");
+
+    const error = validateForm();
+    if (error) {
+      setMessage(error);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setMessage("");
+
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        setMessage("Unauthorized. Please login again.");
+        return;
+      }
+
+      await axios.post(
+        "http://localhost:5000/api/events",
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      setMessage("Event created successfully!");
+
+      setFormData({
+        title: "",
+        category: "",
+        startDate: "",
+        endDate: "",
+        location: "",
+        description: "",
+      });
+
+    } catch (err) {
+      setMessage(
+        err.response?.data?.message || "Failed to create event"
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <>
       <Navbar />
 
-      <div
-        style={{
-          minHeight: "100vh",
-          padding: "40px",
-background: "#f9fafb", // subtle dashboard gray (optional but professional)
+      <div style={containerStyle}>
+        <div style={cardStyle}>
+          <h2 style={{ marginBottom: "20px" }}>Create Event</h2>
 
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "flex-start",
-        }}
-      >
-        <div
-          style={{
-            width: "100%",
-            maxWidth: "920px",
-            background: "#ffffff",
-            borderRadius: "16px",
-            boxShadow: "0 20px 45px rgba(0,0,0,0.08)",
-            padding: "40px",
-            transition: "0.3s ease",
-          }}
-        >
-          {/* Header */}
-          <div style={{ marginBottom: "25px" }}>
-            <h2 style={{ margin: 0, fontSize: "26px" }}>Create New Event</h2>
-            <p style={{ color: "#6b7280", marginTop: "8px", fontSize: "14px" }}>
-              Fill in the details below to publish a new campus event.
+          {message && (
+            <p style={{ color: message.includes("success") ? "green" : "red" }}>
+              {message}
             </p>
-          </div>
+          )}
 
-          {/* Divider */}
-          <div
-            style={{
-              height: "1px",
-              background: "#e5e7eb",
-              marginBottom: "25px",
-            }}
-          />
+          <form onSubmit={handleSubmit} style={formStyle}>
 
-          {/* Form */}
-          <form
-            onSubmit={handleSubmit}
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "20px",
-            }}
-          >
-            {/* Row 1 */}
-            <Grid>
-              <Input
-                label="Event Title"
-                name="title"
-                value={formData.title}
-                onChange={handleChange}
-                placeholder="Enter event title"
-              />
+            <Input
+              label="Event Title"
+              name="title"
+              value={formData.title}
+              onChange={handleChange}
+              placeholder="Enter event title"
+            />
 
-              <Input
-                label="Category"
+            <Input
+              label="Location"
+              name="location"
+              value={formData.location}
+              onChange={handleChange}
+              placeholder="Enter event location"
+            />
+
+            <Input
+              label="Start Date"
+              type="date"
+              name="startDate"
+              value={formData.startDate}
+              onChange={handleChange}
+            />
+
+            <Input
+              label="End Date"
+              type="date"
+              name="endDate"
+              value={formData.endDate}
+              onChange={handleChange}
+            />
+
+            <div>
+              <label style={labelStyle}>Category</label>
+              <select
                 name="category"
                 value={formData.category}
                 onChange={handleChange}
-                placeholder="Hackathon, Cultural, Workshop..."
-              />
-            </Grid>
+                style={inputStyle}
+                required
+              >
+                <option value="">Select Category</option>
+                <option value="Tech">Tech</option>
+                <option value="Cultural">Cultural</option>
+                <option value="Sports">Sports</option>
+                <option value="Workshop">Workshop</option>
+              </select>
+            </div>
 
-            {/* Row 2 */}
-            <Grid>
-              <Input
-                label="Date"
-                type="date"
-                name="date"
-                value={formData.date}
-                onChange={handleChange}
-              />
-
-              <Input
-                label="Location"
-                name="location"
-                value={formData.location}
-                onChange={handleChange}
-                placeholder="Event venue"
-              />
-            </Grid>
-
-            {/* Description */}
-            <div style={{ display: "flex", flexDirection: "column" }}>
+            <div>
               <label style={labelStyle}>Description</label>
               <textarea
                 name="description"
@@ -126,18 +166,10 @@ background: "#f9fafb", // subtle dashboard gray (optional but professional)
               />
             </div>
 
-            {/* Actions */}
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                marginTop: "10px",
-              }}
-            >
-              <button type="submit" style={primaryBtn}>
-                Create Event
-              </button>
-            </div>
+            <button type="submit" style={buttonStyle} disabled={loading}>
+              {loading ? "Creating..." : "Create Event"}
+            </button>
+
           </form>
         </div>
       </div>
@@ -145,25 +177,10 @@ background: "#f9fafb", // subtle dashboard gray (optional but professional)
   );
 }
 
-/* ---------- Layout Grid ---------- */
-function Grid({ children }) {
-  return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        gap: "18px",
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
 /* ---------- Reusable Input ---------- */
 function Input({ label, type = "text", ...props }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column" }}>
+    <div>
       <label style={labelStyle}>{label}</label>
       <input type={type} {...props} style={inputStyle} required />
     </div>
@@ -172,31 +189,49 @@ function Input({ label, type = "text", ...props }) {
 
 /* ---------- Styles ---------- */
 
+const containerStyle = {
+  minHeight: "100vh",
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  background: "#f4f6f8",
+  padding: "20px",
+};
+
+const cardStyle = {
+  width: "100%",
+  maxWidth: "600px",
+  background: "#ffffff",
+  padding: "30px",
+  borderRadius: "12px",
+  boxShadow: "0 15px 35px rgba(0,0,0,0.08)",
+};
+
+const formStyle = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "18px",
+};
+
 const labelStyle = {
-  fontSize: "13px",
-  fontWeight: "600",
   marginBottom: "6px",
-  color: "#374151",
+  fontWeight: "600",
+  fontSize: "14px",
 };
 
 const inputStyle = {
-  padding: "11px 13px",
-  borderRadius: "10px",
-  border: "1px solid #d1d5db",
+  padding: "12px",
+  borderRadius: "8px",
+  border: "1px solid #ddd",
   fontSize: "14px",
-  outline: "none",
-  transition: "all 0.2s ease",
 };
 
-const primaryBtn = {
-  background: "linear-gradient(135deg, #1F3C88, #2563eb)",
-  color: "#fff",
+const buttonStyle = {
+  padding: "14px",
+  borderRadius: "8px",
   border: "none",
-  padding: "12px 26px",
-  borderRadius: "10px",
-  cursor: "pointer",
+  background: "#2563eb",
+  color: "#fff",
   fontWeight: "600",
-  fontSize: "14px",
-  boxShadow: "0 8px 18px rgba(37,99,235,0.35)",
-  transition: "all 0.2s ease",
+  cursor: "pointer",
 };

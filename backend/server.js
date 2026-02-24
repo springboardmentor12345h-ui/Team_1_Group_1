@@ -6,6 +6,8 @@ import adminRoutes from "./src/routes/adminRoutes.js";
 import connectDB from "./src/config/db.js";
 import authRoutes from "./src/routes/authRoutes.js";
 import chatRoutes from "./src/routes/chatRoutes.js";
+import eventRoutes from "./src/routes/EventRoutes.js";
+
 
 dotenv.config();
 
@@ -36,7 +38,7 @@ app.get("/", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/chat", chatRoutes);
-
+app.use("/api/events", eventRoutes);
 
 // 404 handler
 app.use((req, res) => {
