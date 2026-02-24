@@ -1,86 +1,69 @@
 import jwt from "jsonwebtoken";
+import User from "../models/User.js";
 
-/* ===============================
-   VERIFY TOKEN MIDDLEWARE
-================================= */
-export const verifyToken = (req, res, next) => {
+// 🔐 Verify Token
+export const verifyToken = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-
-    // Check if header exists
-    if (!authHeader) {
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.status(401).json({ message: "No token provided" });
     }
 
-    // Must start with Bearer
-    if (!authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({ message: "Invalid authorization format" });
-    }
-
-    const tokenParts = authHeader.split(" ");
-
-    if (tokenParts.length !== 2) {
-      return res.status(401).json({ message: "Malformed token" });
-    }
-
-    const token = tokenParts[1];
-
+    const token = authHeader.split(" ")[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    req.user = decoded;
+    const user = await User.findById(decoded.id).select("-password");
+
+    if (!user) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    if (user.status !== "approved") {
+      return res.status(403).json({
+        message: "Account pending approval",
+      });
+    }
+
+    req.user = user;
     next();
 
   } catch (error) {
+    res.status(401).json({ message: "Invalid or expired token" });
+  }
+};
 
-    if (error.name === "TokenExpiredError") {
-      return res.status(401).json({ message: "Token expired" });
+// 🎭 Role Authorization
+export const authorizeRoles = (...roles) => {
+  return (req, res, next) => {
+
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
     }
 
-    return res.status(401).json({ message: "Invalid token" });
-  }
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    next();
+  };
 };
 
+export const optionalVerifyToken = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
 
-/* ===============================
-   ROLE BASED MIDDLEWARE
-================================= */
-
-// College Admin only
-export const collegeAdminOnly = (req, res, next) => {
-  if (!req.user) {
-    return res.status(401).json({ message: "Unauthorized" });
+  if (!authHeader) {
+    req.user = null;
+    return next();
   }
 
-  if (req.user.role !== "college_admin") {
-    return res.status(403).json({ message: "College Admin access only" });
-  }
+  try {
+    const token = authHeader.split(" ")[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id).select("-password");
 
-  next();
-};
-
-
-// Super Admin only
-export const superAdminOnly = (req, res, next) => {
-  if (!req.user) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-
-  if (req.user.role !== "super_admin") {
-    return res.status(403).json({ message: "Super Admin access only" });
-  }
-
-  next();
-};
-
-
-// Student only
-export const studentOnly = (req, res, next) => {
-  if (!req.user) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-
-  if (req.user.role !== "student") {
-    return res.status(403).json({ message: "Student access only" });
+    req.user = user || null;
+  } catch (err) {
+    req.user = null;
   }
 
   next();
