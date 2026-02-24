@@ -1,5 +1,3 @@
-// StudentDashboard.jsx
-
 import Navbar from "../components/Navbar";
 import StatsCard from "../components/StatsCard";
 import QuickActions from "../components/QuickActions";
@@ -11,17 +9,13 @@ export default function StudentDashboard() {
     <>
       <Navbar />
 
-      <div style={{ padding: "40px" }}>
-        <h2 style={{ marginBottom: "20px" }}>Student Dashboard</h2>
+      <div className="p-10">
+        <h2 className="mb-5 text-2xl font-semibold">
+          Student Dashboard
+        </h2>
 
         {/* Stats Section */}
-        <div
-          style={{
-            display: "flex",
-            gap: "20px",
-            flexWrap: "wrap",
-          }}
-        >
+        <div className="flex flex-wrap gap-5">
           <StatsCard
             title="Total Events"
             value="12"
@@ -52,14 +46,7 @@ export default function StudentDashboard() {
         </div>
 
         {/* Bottom Section */}
-        <div
-          style={{
-            display: "flex",
-            gap: "20px",
-            marginTop: "30px",
-            flexWrap: "wrap",
-          }}
-        >
+        <div className="flex flex-wrap gap-5 mt-8">
           <RecentEvents />
           <QuickActions />
         </div>
