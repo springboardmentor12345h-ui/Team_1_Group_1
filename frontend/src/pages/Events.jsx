@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import EventsFilter from "../components/EventsFilter";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
@@ -100,16 +101,10 @@ export default function Events() {
   useEffect(() => { fetchEvents(); }, []);
   useEffect(() => { setPage(1); }, [search, activeCategory]);
 
-  /* ── Filter ── */
-  const filtered = allEvents.filter((ev) => {
-    const q = search.toLowerCase();
-    const matchSearch =
-      ev.title.toLowerCase().includes(q) ||
-      ev.description?.toLowerCase().includes(q) ||
-      ev.location?.toLowerCase().includes(q) ||
-      ev.createdBy?.college?.toLowerCase().includes(q);
-    const matchCat = activeCategory === "All" || ev.category === activeCategory;
-    return matchSearch && matchCat;
+  const filtered = EventsFilter({
+    events: allEvents,
+    search,
+    activeCategory,
   });
 
   /* ── Pagination ── */
