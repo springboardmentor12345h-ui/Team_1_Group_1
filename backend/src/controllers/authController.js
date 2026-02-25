@@ -18,6 +18,16 @@ export const registerUser = async (req, res) => {
       });
     }
 
+    const passwordRegex =
+  /^(?=.*[A-Z])(?=.*\d)(?=.*[@#$%&])[A-Za-z\d@#$%&]{8,}$/;
+
+if (!passwordRegex.test(password)) {
+  return res.status(400).json({
+    message:
+      "Password must be at least 8 characters and include one uppercase letter, one number, and one special character (@ # $ % &)",
+  });
+}
+
     // 2️⃣ Prevent manual super_admin registration
     if (role === "super_admin") {
       return res.status(403).json({
@@ -32,6 +42,7 @@ export const registerUser = async (req, res) => {
         message: "Email already registered",
       });
     }
+    
 
     const allowedRoles = ["student", "college_admin"];
     const selectedRole = allowedRoles.includes(role) ? role : "student";

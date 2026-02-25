@@ -1,42 +1,87 @@
 import { motion } from "framer-motion";
+import { FiCalendar, FiMapPin, FiArrowRight } from "react-icons/fi";
+
+const categoryColors = {
+  Technical:      { bg: "bg-sky-50",    text: "text-sky-700",    dot: "bg-sky-500" },
+  Workshop:       { bg: "bg-amber-50",  text: "text-amber-700",  dot: "bg-amber-500" },
+  Cultural:       { bg: "bg-rose-50",   text: "text-rose-700",   dot: "bg-rose-500" },
+  Entrepreneurship:{ bg: "bg-emerald-50",text: "text-emerald-700",dot: "bg-emerald-500" },
+  Sports:         { bg: "bg-violet-50", text: "text-violet-700", dot: "bg-violet-500" },
+};
 
 export default function EventCard({ event, index = 0 }) {
+  const colors = categoryColors[event.category] || categoryColors["Technical"];
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 40 }}
+      initial={{ opacity: 0, y: 32 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ delay: index * 0.12 }}
-      className="group bg-white border border-blue-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl hover:-translate-y-2 transition duration-300"
+      viewport={{ once: true, margin: "-40px" }}
+      transition={{ duration: 0.45, delay: index * 0.1, ease: [0.22, 1, 0.36, 1] }}
+      className="group relative bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col"
     >
       {/* Image */}
-      <div className="relative overflow-hidden">
+      <div className="relative overflow-hidden h-48 flex-shrink-0">
         <img
           src={event.image}
           alt={event.title}
-          className="h-44 w-full object-cover group-hover:scale-105 transition duration-500"
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
         />
 
-        {/* Date badge */}
-        <div className="absolute top-3 left-3 bg-white/90 backdrop-blur px-3 py-1 rounded-lg text-xs font-semibold text-blue-700 shadow">
-          {event.date}
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+
+        {/* Category badge */}
+        <div className={`absolute top-3 left-3 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${colors.bg} ${colors.text} shadow-sm backdrop-blur-sm`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${colors.dot}`} />
+          {event.category}
         </div>
       </div>
 
       {/* Content */}
-      <div className="p-5">
-        <h3 className="font-semibold text-lg tracking-tight mb-1 group-hover:text-blue-600 transition">
+      <div className="p-5 flex flex-col flex-1">
+        <h3 className="font-semibold text-base text-slate-900 tracking-tight mb-3 group-hover:text-sky-700 transition-colors duration-200 line-clamp-2">
           {event.title}
         </h3>
 
-        <p className="text-sm text-slate-500">{event.college}</p>
+        {event.description && (
+          <p className="text-sm text-slate-500 leading-relaxed mb-4 line-clamp-2">
+            {event.description}
+          </p>
+        )}
+
+        {/* Meta */}
+        <div className="mt-auto space-y-1.5">
+          {event.date && (
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              <FiCalendar size={12} className="text-slate-400 flex-shrink-0" />
+              <span>{event.date}</span>
+            </div>
+          )}
+          {event.location && (
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              <FiMapPin size={12} className="text-slate-400 flex-shrink-0" />
+              <span className="truncate">{event.location}</span>
+            </div>
+          )}
+          {event.college && !event.location && (
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              <FiMapPin size={12} className="text-slate-400 flex-shrink-0" />
+              <span className="truncate">{event.college}</span>
+            </div>
+          )}
+        </div>
 
         {/* Divider */}
         <div className="my-4 h-px bg-slate-100" />
 
-        {/* Action */}
-        <button className="text-sm font-medium text-blue-600 flex items-center gap-1 group-hover:gap-2 transition-all">
-          View Details →
+        {/* CTA */}
+        <button className="flex items-center gap-1.5 text-sm font-semibold text-sky-600 hover:text-sky-800 transition-colors group/btn w-fit">
+          View Details
+          <FiArrowRight
+            size={14}
+            className="translate-x-0 group-hover/btn:translate-x-1 transition-transform duration-200"
+          />
         </button>
       </div>
     </motion.div>

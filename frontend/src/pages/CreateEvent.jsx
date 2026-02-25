@@ -1,11 +1,15 @@
 import { useState } from "react";
 import Navbar from "../components/Navbar";
+import toast from "react-hot-toast";
 
 export default function CreateEvent() {
+  const [loading, setLoading] = useState(false);
+
   const [formData, setFormData] = useState({
     title: "",
     category: "",
-    date: "",
+    startDate: "",
+    endDate: "",
     location: "",
     description: "",
   });
@@ -17,186 +21,173 @@ export default function CreateEvent() {
     });
   };
 
+  const validateForm = () => {
+    if (formData.title.length < 3) {
+      return "Title must be at least 3 characters";
+    }
+
+    if (
+      formData.startDate &&
+      formData.endDate &&
+      new Date(formData.startDate) > new Date(formData.endDate)
+    ) {
+      return "End date must be after start date";
+    }
+
+    return null;
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    alert("Event will be created (backend coming next)");
+
+    const error = validateForm();
+    if (error) {
+      toast.error(error);
+      return;
+    }
+
+    setLoading(true);
+
+    // 🔥 Backend not ready yet
+    setTimeout(() => {
+      toast.success("Event created (UI demo only)");
+      setLoading(false);
+      setFormData({
+        title: "",
+        category: "",
+        startDate: "",
+        endDate: "",
+        location: "",
+        description: "",
+      });
+    }, 800);
   };
 
   return (
     <>
       <Navbar />
 
-      <div
-        style={{
-          minHeight: "100vh",
-          padding: "40px",
-background: "#f9fafb", // subtle dashboard gray (optional but professional)
+      <div className="min-h-screen flex justify-center items-center bg-gray-50 px-4 py-10">
+        <div className="w-full max-w-2xl bg-white rounded-2xl shadow-lg p-8">
 
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "flex-start",
-        }}
-      >
-        <div
-          style={{
-            width: "100%",
-            maxWidth: "920px",
-            background: "#ffffff",
-            borderRadius: "16px",
-            boxShadow: "0 20px 45px rgba(0,0,0,0.08)",
-            padding: "40px",
-            transition: "0.3s ease",
-          }}
-        >
-          {/* Header */}
-          <div style={{ marginBottom: "25px" }}>
-            <h2 style={{ margin: 0, fontSize: "26px" }}>Create New Event</h2>
-            <p style={{ color: "#6b7280", marginTop: "8px", fontSize: "14px" }}>
-              Fill in the details below to publish a new campus event.
-            </p>
-          </div>
+          <h2 className="text-2xl font-semibold mb-2">
+            Create New Event
+          </h2>
+          <p className="text-sm text-gray-500 mb-6">
+            Fill in the details below to publish a campus event.
+          </p>
 
-          {/* Divider */}
-          <div
-            style={{
-              height: "1px",
-              background: "#e5e7eb",
-              marginBottom: "25px",
-            }}
-          />
+          <form onSubmit={handleSubmit} className="space-y-5">
 
-          {/* Form */}
-          <form
-            onSubmit={handleSubmit}
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "20px",
-            }}
-          >
-            {/* Row 1 */}
-            <Grid>
-              <Input
-                label="Event Title"
+            {/* Title */}
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Event Title
+              </label>
+              <input
+                type="text"
                 name="title"
                 value={formData.title}
                 onChange={handleChange}
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 placeholder="Enter event title"
               />
+            </div>
 
-              <Input
-                label="Category"
-                name="category"
-                value={formData.category}
-                onChange={handleChange}
-                placeholder="Hackathon, Cultural, Workshop..."
-              />
-            </Grid>
-
-            {/* Row 2 */}
-            <Grid>
-              <Input
-                label="Date"
-                type="date"
-                name="date"
-                value={formData.date}
-                onChange={handleChange}
-              />
-
-              <Input
-                label="Location"
+            {/* Location */}
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Location
+              </label>
+              <input
+                type="text"
                 name="location"
                 value={formData.location}
                 onChange={handleChange}
-                placeholder="Event venue"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                placeholder="Enter event location"
               />
-            </Grid>
+            </div>
+
+            {/* Date Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Start Date
+                </label>
+                <input
+                  type="date"
+                  name="startDate"
+                  value={formData.startDate}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  End Date
+                </label>
+                <input
+                  type="date"
+                  name="endDate"
+                  value={formData.endDate}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Category */}
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Category
+              </label>
+              <select
+                name="category"
+                value={formData.category}
+                onChange={handleChange}
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              >
+                <option value="">Select Category</option>
+                <option value="Tech">Tech</option>
+                <option value="Cultural">Cultural</option>
+                <option value="Sports">Sports</option>
+                <option value="Workshop">Workshop</option>
+              </select>
+            </div>
 
             {/* Description */}
-            <div style={{ display: "flex", flexDirection: "column" }}>
-              <label style={labelStyle}>Description</label>
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Description
+              </label>
               <textarea
                 name="description"
                 rows="4"
                 value={formData.description}
                 onChange={handleChange}
-                placeholder="Write full event details..."
-                style={inputStyle}
-                required
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                placeholder="Enter event description"
               />
             </div>
 
-            {/* Actions */}
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                marginTop: "10px",
-              }}
+            <button
+              type="submit"
+              disabled={loading}
+              className={`w-full py-3 rounded-lg font-medium transition ${
+                loading
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-indigo-600 hover:bg-indigo-700 text-white"
+              }`}
             >
-              <button type="submit" style={primaryBtn}>
-                Create Event
-              </button>
-            </div>
+              {loading ? "Creating..." : "Create Event"}
+            </button>
+
           </form>
         </div>
       </div>
     </>
   );
 }
-
-/* ---------- Layout Grid ---------- */
-function Grid({ children }) {
-  return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        gap: "18px",
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-/* ---------- Reusable Input ---------- */
-function Input({ label, type = "text", ...props }) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column" }}>
-      <label style={labelStyle}>{label}</label>
-      <input type={type} {...props} style={inputStyle} required />
-    </div>
-  );
-}
-
-/* ---------- Styles ---------- */
-
-const labelStyle = {
-  fontSize: "13px",
-  fontWeight: "600",
-  marginBottom: "6px",
-  color: "#374151",
-};
-
-const inputStyle = {
-  padding: "11px 13px",
-  borderRadius: "10px",
-  border: "1px solid #d1d5db",
-  fontSize: "14px",
-  outline: "none",
-  transition: "all 0.2s ease",
-};
-
-const primaryBtn = {
-  background: "linear-gradient(135deg, #1F3C88, #2563eb)",
-  color: "#fff",
-  border: "none",
-  padding: "12px 26px",
-  borderRadius: "10px",
-  cursor: "pointer",
-  fontWeight: "600",
-  fontSize: "14px",
-  boxShadow: "0 8px 18px rgba(37,99,235,0.35)",
-  transition: "all 0.2s ease",
-};
