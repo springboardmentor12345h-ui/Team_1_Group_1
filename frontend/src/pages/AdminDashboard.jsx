@@ -1,9 +1,11 @@
 // AdminDashboard.jsx
-import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useState, useEffect, useCallback, useRef } from "react";
+import axios from "axios";
 import Navbar from "../components/Navbar";
 import StatsCard from "../components/StatsCard";
 import Sidebar from "../components/Sidebar";
+import EventCard from "../components/EventCard";
 import {
   FiUsers,
   FiFileText,
@@ -12,10 +14,89 @@ import {
   FiUser,
   FiCalendar,
   FiHome,
+  FiEdit2,
+  FiTrash2,
+  FiSearch,
+  FiFilter,
+  FiPlus,
+  FiChevronLeft,
+  FiChevronRight,
+  FiX,
+  FiAlertCircle,
+  FiUploadCloud,
+  FiType,
+  FiMapPin,
+  FiCheckSquare,
+  FiSave,
+  FiTag,
+  FiInfo,
 } from "react-icons/fi";
 
+const BASE_URL = "http://localhost:5000";
+const EVENTS_PER_PAGE = 6;
+const CATEGORIES = ["Tech", "Cultural", "Sports", "Workshop"];
+
+const CATEGORY_MAP = {
+  Tech: "Technical",
+  Technical: "Technical",
+  Cultural: "Cultural",
+  Sports: "Sports",
+  Workshop: "Workshop",
+};
+
+const CATEGORY_COLORS = {
+  Tech: "bg-blue-100 text-blue-700 border-blue-200",
+  Cultural: "bg-purple-100 text-purple-700 border-purple-200",
+  Sports: "bg-green-100 text-green-700 border-green-200",
+  Workshop: "bg-amber-100 text-amber-700 border-amber-200",
+};
+
+function formatDate(date) {
+  return new Date(date).toLocaleDateString("en-IN", {
+    day: "numeric", month: "short", year: "numeric",
+  });
+}
+
+function getEventStatus(startDate, endDate) {
+  const now = new Date();
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  if (now < start) return "Upcoming";
+  if (now >= start && now <= end) return "Ongoing";
+  return "Past";
+}
+
+function toCardProps(event) {
+  const start = formatDate(event.startDate);
+  const end = formatDate(event.endDate);
+  const dateStr = start === end ? start : `${start} – ${end}`;
+  return {
+    title: event.title,
+    description: event.description,
+    category: CATEGORY_MAP[event.category] || "Technical",
+    date: dateStr,
+    location: event.location,
+    college: event.createdBy?.college || event.createdBy?.name || "",
+    image: event.image
+      ? `${BASE_URL}/${event.image}`
+      : "https://placehold.co/600x400?text=No+Image",
+  };
+}
+
+function inputCls(error) {
+  return `w-full px-3.5 py-2.5 rounded-lg border text-sm text-gray-800 placeholder-gray-400 outline-none transition-all focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 ${
+    error ? "border-red-300 bg-red-50 focus:ring-red-100" : "border-gray-200 bg-white"
+  }`;
+}
+
+/* ================================================
+   ROOT DASHBOARD
+================================================ */
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState("overview");
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(
+    location.state?.activeTab || "overview"
+  );
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
 
@@ -42,11 +123,9 @@ export default function AdminDashboard() {
         />
 
         <main
-          className={`
-            flex-1 overflow-y-auto overflow-x-hidden bg-gray-50
-            transition-all duration-300
-            ${collapsed ? "md:ml-[68px]" : "md:ml-64"}
-          `}
+          className={`flex-1 overflow-y-auto overflow-x-hidden bg-gray-50 transition-all duration-300 ${
+            collapsed ? "md:ml-[68px]" : "md:ml-64"
+          }`}
         >
           <div className="p-5 sm:p-8">
             <h2 className="text-xl sm:text-2xl font-semibold mb-6 text-gray-800">
@@ -76,7 +155,1082 @@ export default function AdminDashboard() {
   );
 }
 
-/* ---------- OVERVIEW SECTION ---------- */
+/* ================================================
+   EVENT MANAGEMENT
+================================================ */
+function EventManagement() {
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [page, setPage] = useState(1);
+
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+
+  const [editTarget, setEditTarget] = useState(null);
+
+  const [showCreate, setShowCreate] = useState(false);
+
+  const fetchEvents = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const { data } = await axios.get(`${BASE_URL}/api/events`);
+      setEvents(data);
+    } catch {
+      setError("Failed to load events. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchEvents(); }, [fetchEvents]);
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    const token = localStorage.getItem("token");
+    try {
+      setDeleteLoading(true);
+      setDeleteError("");
+      await axios.delete(`${BASE_URL}/api/events/${deleteTarget._id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setEvents((prev) => prev.filter((e) => e._id !== deleteTarget._id));
+      setDeleteTarget(null);
+    } catch (err) {
+      setDeleteError(err.response?.data?.message || "Failed to delete event");
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const filtered = events.filter((ev) => {
+    const matchSearch =
+      ev.title.toLowerCase().includes(search.toLowerCase()) ||
+      ev.location?.toLowerCase().includes(search.toLowerCase());
+    const matchCategory = categoryFilter === "All" || ev.category === categoryFilter;
+    const status = getEventStatus(ev.startDate, ev.endDate);
+    const matchStatus = statusFilter === "All" || status === statusFilter;
+    return matchSearch && matchCategory && matchStatus;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / EVENTS_PER_PAGE));
+  const paginated = filtered.slice(
+    (page - 1) * EVENTS_PER_PAGE,
+    page * EVENTS_PER_PAGE
+  );
+
+  useEffect(() => { setPage(1); }, [search, categoryFilter, statusFilter]);
+
+  return (
+    <div>
+      {/* Toolbar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-800">Event Management</h3>
+          <p className="text-sm text-gray-500 mt-0.5">
+            {loading ? "Loading..." : `${filtered.length} event${filtered.length !== 1 ? "s" : ""} found`}
+          </p>
+        </div>
+        <button
+          onClick={() => setShowCreate(true)}
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg font-semibold text-sm transition-colors shadow-sm self-start sm:self-auto"
+        >
+          <FiPlus size={16} />
+          Create Event
+        </button>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white border border-gray-100 rounded-xl p-4 mb-4 flex flex-col sm:flex-row gap-3 shadow-sm">
+        <div className="relative flex-1">
+          <FiSearch size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search events or locations..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-9 pr-9 py-2.5 text-sm border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 bg-gray-50"
+          />
+          {search && (
+            <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+              <FiX size={14} />
+            </button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <FiFilter size={14} className="text-gray-400 flex-shrink-0" />
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="text-sm border border-gray-200 rounded-lg px-3 py-2.5 bg-gray-50 outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 cursor-pointer"
+          >
+            {["All", "Tech", "Cultural", "Sports", "Workshop"].map((c) => (
+              <option key={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="text-sm border border-gray-200 rounded-lg px-3 py-2.5 bg-gray-50 outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 cursor-pointer"
+        >
+          {["All", "Upcoming", "Ongoing", "Past"].map((s) => (
+            <option key={s}>{s}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Content */}
+      {loading ? (
+        <EventsSkeleton />
+      ) : error ? (
+        <ErrorState message={error} onRetry={fetchEvents} />
+      ) : filtered.length === 0 ? (
+        <EmptyState
+          hasFilters={search || categoryFilter !== "All" || statusFilter !== "All"}
+          onClear={() => { setSearch(""); setCategoryFilter("All"); setStatusFilter("All"); }}
+          onCreate={() => setShowCreate(true)}
+        />
+      ) : (
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {paginated.map((event, i) => (
+              <AdminEventCard
+                key={event._id}
+                event={event}
+                index={i}
+                onEdit={() => setEditTarget(event)}
+                onDelete={() => { setDeleteTarget(event); setDeleteError(""); }}
+              />
+            ))}
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-5">
+              <p className="text-sm text-gray-500">Page {page} of {totalPages}</p>
+              <div className="flex gap-2">
+                <button
+                  disabled={page === 1}
+                  onClick={() => setPage((p) => p - 1)}
+                  className="p-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <FiChevronLeft size={16} />
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p)}
+                    className={`w-9 h-9 rounded-lg text-sm font-semibold transition-colors ${
+                      page === p ? "bg-blue-600 text-white" : "border border-gray-200 text-gray-600 hover:bg-gray-100"
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+                <button
+                  disabled={page === totalPages}
+                  onClick={() => setPage((p) => p + 1)}
+                  className="p-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <FiChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Delete Modal */}
+      {deleteTarget && (
+        <DeleteModal
+          event={deleteTarget}
+          loading={deleteLoading}
+          error={deleteError}
+          onConfirm={confirmDelete}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
+
+      {/* Edit Event Modal */}
+      {editTarget && (
+        <EditEventModal
+          event={editTarget}
+          onClose={() => setEditTarget(null)}
+          onUpdated={(updatedEvent) => {
+            setEvents((prev) =>
+              prev.map((e) => (e._id === updatedEvent._id ? updatedEvent : e))
+            );
+            setEditTarget(null);
+          }}
+        />
+      )}
+
+      {/* Create Event Modal */}
+      {showCreate && (
+        <CreateEventModal
+          onClose={() => setShowCreate(false)}
+          onCreated={(newEvent) => {
+            setEvents((prev) => [newEvent, ...prev]);
+            setShowCreate(false);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ================================================
+   CREATE EVENT MODAL
+================================================ */
+function CreateEventModal({ onClose, onCreated }) {
+  const fileInputRef = useRef(null);
+
+  const [formData, setFormData] = useState({
+    title: "",
+    category: "",
+    startDate: "",
+    endDate: "",
+    location: "",
+    description: "",
+  });
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [errors, setErrors] = useState({});
+  const [apiError, setApiError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+
+  // Close on Escape
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((p) => ({ ...p, [name]: value }));
+    if (errors[name]) setErrors((p) => ({ ...p, [name]: "" }));
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setErrors((p) => ({ ...p, image: "Image must be under 5MB" }));
+      return;
+    }
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+    setErrors((p) => ({ ...p, image: "" }));
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const validate = () => {
+    const e = {};
+    if (!formData.title.trim() || formData.title.trim().length < 3)
+      e.title = "Title must be at least 3 characters";
+    if (!formData.category) e.category = "Please select a category";
+    if (!formData.location.trim()) e.location = "Location is required";
+    if (!formData.startDate) e.startDate = "Start date is required";
+    if (!formData.endDate) e.endDate = "End date is required";
+    if (formData.startDate && formData.endDate &&
+      new Date(formData.startDate) > new Date(formData.endDate))
+      e.endDate = "End date must be after start date";
+    if (!formData.description.trim()) e.description = "Description is required";
+    return e;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+    if (!token) { setApiError("Unauthorized. Please login again."); return; }
+
+    const payload = new FormData();
+    Object.entries(formData).forEach(([key, val]) => payload.append(key, val));
+    if (imageFile) payload.append("image", imageFile);
+
+    try {
+      setLoading(true);
+      setApiError("");
+      const { data } = await axios.post(`${BASE_URL}/api/events`, payload, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      setSuccess(true);
+      setTimeout(() => onCreated(data.event), 1200);
+    } catch (err) {
+      setApiError(err.response?.data?.message || "Failed to create event");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Blurred backdrop */}
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+
+      {/* Modal */}
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col z-10 overflow-hidden">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
+          <div>
+            <h2 className="text-base font-bold text-gray-900">Create New Event</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Fill in the details to publish a new event</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+          >
+            <FiX size={18} />
+          </button>
+        </div>
+
+        {/* Success State */}
+        {success ? (
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 p-12">
+            <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
+              <FiCheckSquare size={30} className="text-green-600" />
+            </div>
+            <p className="text-base font-semibold text-gray-800">Event Created!</p>
+            <p className="text-sm text-gray-400">The new event has been added to your list.</p>
+          </div>
+        ) : (
+          <>
+            {/* Scrollable body */}
+            <div className="flex-1 overflow-y-auto">
+              <form id="create-event-form" onSubmit={handleSubmit} noValidate>
+
+                {apiError && (
+                  <div className="mx-6 mt-4 px-4 py-3 bg-red-50 border border-red-100 rounded-lg text-sm text-red-600 flex items-center gap-2">
+                    <FiAlertCircle size={15} className="flex-shrink-0" />
+                    {apiError}
+                  </div>
+                )}
+
+                {/* Basic Info */}
+                <ModalSection icon={<FiType size={14} />} title="Basic Information">
+                  <div className="grid grid-cols-1 gap-4">
+                    <Field label="Event Title" error={errors.title}>
+                      <input
+                        name="title"
+                        value={formData.title}
+                        onChange={handleChange}
+                        placeholder="e.g. Inter-College Hackathon 2025"
+                        className={inputCls(errors.title)}
+                      />
+                    </Field>
+
+                    <Field label="Category" error={errors.category}>
+                      <div className="flex flex-wrap gap-2 mt-0.5">
+                        {CATEGORIES.map((cat) => (
+                          <button
+                            key={cat}
+                            type="button"
+                            onClick={() => {
+                              setFormData((p) => ({ ...p, category: cat }));
+                              setErrors((p) => ({ ...p, category: "" }));
+                            }}
+                            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                              formData.category === cat
+                                ? CATEGORY_COLORS[cat] + " ring-2 ring-offset-1 ring-current"
+                                : "bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100"
+                            }`}
+                          >
+                            {cat}
+                          </button>
+                        ))}
+                      </div>
+                    </Field>
+                  </div>
+                </ModalSection>
+
+                {/* Date & Location */}
+                <ModalSection icon={<FiCalendar size={14} />} title="Date & Location">
+                  <div className="grid grid-cols-2 gap-4">
+                    <Field label="Start Date" error={errors.startDate}>
+                      <input
+                        type="date"
+                        name="startDate"
+                        value={formData.startDate}
+                        onChange={handleChange}
+                        min={new Date().toISOString().split("T")[0]}
+                        className={inputCls(errors.startDate)}
+                      />
+                    </Field>
+                    <Field label="End Date" error={errors.endDate}>
+                      <input
+                        type="date"
+                        name="endDate"
+                        value={formData.endDate}
+                        onChange={handleChange}
+                        min={formData.startDate || new Date().toISOString().split("T")[0]}
+                        className={inputCls(errors.endDate)}
+                      />
+                    </Field>
+                    <div className="col-span-2">
+                      <Field label="Location" error={errors.location}>
+                        <div className="relative">
+                          <FiMapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                          <input
+                            name="location"
+                            value={formData.location}
+                            onChange={handleChange}
+                            placeholder="e.g. Main Auditorium, Block A"
+                            className={`${inputCls(errors.location)} pl-9`}
+                          />
+                        </div>
+                      </Field>
+                    </div>
+                  </div>
+                </ModalSection>
+
+                {/* Description */}
+                <ModalSection icon={<FiFileText size={14} />} title="Description">
+                  <Field label="Event Description" error={errors.description}>
+                    <textarea
+                      name="description"
+                      rows={3}
+                      value={formData.description}
+                      onChange={handleChange}
+                      placeholder="Describe the event, agenda, speakers, prizes..."
+                      className={`${inputCls(errors.description)} resize-none`}
+                    />
+                  </Field>
+                </ModalSection>
+
+                {/* Banner Image */}
+                <ModalSection icon={<FiUploadCloud size={14} />} title="Event Banner" optional>
+                  {imagePreview ? (
+                    <div className="relative rounded-xl overflow-hidden border border-gray-200 group h-36">
+                      <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <button
+                          type="button"
+                          onClick={removeImage}
+                          className="bg-white text-gray-800 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 shadow-lg"
+                        >
+                          <FiX size={12} /> Remove
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <label
+                      htmlFor="modalImageUpload"
+                      className={`flex items-center gap-4 border-2 border-dashed rounded-xl px-5 py-4 cursor-pointer transition-colors ${
+                        errors.image
+                          ? "border-red-300 bg-red-50"
+                          : "border-gray-200 bg-gray-50 hover:border-blue-600 hover:bg-blue-50/40"
+                      }`}
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0">
+                        <FiUploadCloud size={18} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-700">Click to upload banner</p>
+                        <p className="text-xs text-gray-400 mt-0.5">PNG, JPG, WEBP — max 5MB</p>
+                      </div>
+                    </label>
+                  )}
+                  <input
+                    id="modalImageUpload"
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                    onChange={handleImageChange}
+                    className="hidden"
+                  />
+                  {errors.image && <p className="text-xs text-red-500 mt-1.5">{errors.image}</p>}
+                </ModalSection>
+
+              </form>
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50 flex-shrink-0">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-5 py-2.5 rounded-lg text-sm font-semibold text-gray-600 border border-gray-200 bg-white hover:bg-gray-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                form="create-event-form"
+                disabled={loading}
+                className="px-6 py-2.5 rounded-lg text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2 min-w-[130px] justify-center"
+              >
+                {loading ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <><FiPlus size={15} /> Create Event</>
+                )}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ── Modal Section ── */
+function ModalSection({ icon, title, optional, children }) {
+  return (
+    <div className="px-6 py-5 border-b border-gray-100 last:border-b-0">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-blue-600">{icon}</span>
+        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">{title}</span>
+        {optional && <span className="text-xs text-gray-400">(optional)</span>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/* ── Field ── */
+function Field({ label, children, error }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-sm font-semibold text-gray-700">{label}</label>
+      {children}
+      {error && <p className="text-xs text-red-500">{error}</p>}
+    </div>
+  );
+}
+
+
+/* ================================================
+   EDIT EVENT MODAL
+================================================ */
+function EditEventModal({ event, onClose, onUpdated }) {
+  const fileInputRef = useRef(null);
+
+  const toDateInput = (dateStr) =>
+    dateStr ? new Date(dateStr).toISOString().split("T")[0] : "";
+
+  const [formData, setFormData] = useState({
+    title: event.title || "",
+    category: event.category || "",
+    startDate: toDateInput(event.startDate),
+    endDate: toDateInput(event.endDate),
+    location: event.location || "",
+    description: event.description || "",
+  });
+
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(
+    event.image ? `${BASE_URL}/${event.image}` : null
+  );
+  const [errors, setErrors] = useState({});
+  const [apiError, setApiError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((p) => ({ ...p, [name]: value }));
+    if (errors[name]) setErrors((p) => ({ ...p, [name]: "" }));
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setErrors((p) => ({ ...p, image: "Image must be under 5MB" }));
+      return;
+    }
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+    setErrors((p) => ({ ...p, image: "" }));
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const validate = () => {
+    const e = {};
+    if (!formData.title.trim() || formData.title.trim().length < 3)
+      e.title = "Title must be at least 3 characters";
+    if (!formData.category) e.category = "Please select a category";
+    if (!formData.location.trim()) e.location = "Location is required";
+    if (!formData.startDate) e.startDate = "Start date is required";
+    if (!formData.endDate) e.endDate = "End date is required";
+    if (formData.startDate && formData.endDate &&
+      new Date(formData.startDate) > new Date(formData.endDate))
+      e.endDate = "End date must be after start date";
+    if (!formData.description.trim()) e.description = "Description is required";
+    return e;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+    if (!token) { setApiError("Unauthorized. Please login again."); return; }
+
+    const payload = new FormData();
+    Object.entries(formData).forEach(([key, val]) => payload.append(key, val));
+    if (imageFile) payload.append("image", imageFile);
+
+    try {
+      setLoading(true);
+      setApiError("");
+      const { data } = await axios.put(
+        `${BASE_URL}/api/events/${event._id}`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+      setSuccess(true);
+      setTimeout(() => onUpdated(data), 1200);
+    } catch (err) {
+      setApiError(err.response?.data?.message || "Failed to update event");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col z-10 overflow-hidden">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600">
+              <FiEdit2 size={15} />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-gray-900">Edit Event</h2>
+              <p className="text-xs text-gray-400 mt-0.5 truncate max-w-xs">{event.title}</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+          >
+            <FiX size={18} />
+          </button>
+        </div>
+
+        {/* Success State */}
+        {success ? (
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 p-12">
+            <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
+              <FiCheckSquare size={30} className="text-green-600" />
+            </div>
+            <p className="text-base font-semibold text-gray-800">Event Updated!</p>
+            <p className="text-sm text-gray-400">Your changes have been saved successfully.</p>
+          </div>
+        ) : (
+          <>
+            <div className="flex-1 overflow-y-auto">
+              <form id="edit-event-form" onSubmit={handleSubmit} noValidate>
+
+                {apiError && (
+                  <div className="mx-6 mt-4 px-4 py-3 bg-red-50 border border-red-100 rounded-lg text-sm text-red-600 flex items-center gap-2">
+                    <FiAlertCircle size={15} className="flex-shrink-0" />
+                    {apiError}
+                  </div>
+                )}
+
+                {/* Basic Info */}
+                <ModalSection icon={<FiType size={14} />} title="Basic Information">
+                  <div className="grid grid-cols-1 gap-4">
+                    <Field label="Event Title" error={errors.title}>
+                      <input
+                        name="title"
+                        value={formData.title}
+                        onChange={handleChange}
+                        placeholder="e.g. Inter-College Hackathon 2025"
+                        className={inputCls(errors.title)}
+                      />
+                    </Field>
+
+                    <Field label="Category" error={errors.category}>
+                      <div className="flex flex-wrap gap-2 mt-0.5">
+                        {CATEGORIES.map((cat) => (
+                          <button
+                            key={cat}
+                            type="button"
+                            onClick={() => {
+                              setFormData((p) => ({ ...p, category: cat }));
+                              setErrors((p) => ({ ...p, category: "" }));
+                            }}
+                            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                              formData.category === cat
+                                ? CATEGORY_COLORS[cat] + " ring-2 ring-offset-1 ring-current"
+                                : "bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100"
+                            }`}
+                          >
+                            {cat}
+                          </button>
+                        ))}
+                      </div>
+                    </Field>
+                  </div>
+                </ModalSection>
+
+                {/* Date & Location */}
+                <ModalSection icon={<FiCalendar size={14} />} title="Date & Location">
+                  <div className="grid grid-cols-2 gap-4">
+                    <Field label="Start Date" error={errors.startDate}>
+                      <input
+                        type="date"
+                        name="startDate"
+                        value={formData.startDate}
+                        onChange={handleChange}
+                        className={inputCls(errors.startDate)}
+                      />
+                    </Field>
+                    <Field label="End Date" error={errors.endDate}>
+                      <input
+                        type="date"
+                        name="endDate"
+                        value={formData.endDate}
+                        onChange={handleChange}
+                        min={formData.startDate}
+                        className={inputCls(errors.endDate)}
+                      />
+                    </Field>
+                    <div className="col-span-2">
+                      <Field label="Location" error={errors.location}>
+                        <div className="relative">
+                          <FiMapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                          <input
+                            name="location"
+                            value={formData.location}
+                            onChange={handleChange}
+                            placeholder="e.g. Main Auditorium, Block A"
+                            className={`${inputCls(errors.location)} pl-9`}
+                          />
+                        </div>
+                      </Field>
+                    </div>
+                  </div>
+                </ModalSection>
+
+                {/* Description */}
+                <ModalSection icon={<FiFileText size={14} />} title="Description">
+                  <Field label="Event Description" error={errors.description}>
+                    <textarea
+                      name="description"
+                      rows={3}
+                      value={formData.description}
+                      onChange={handleChange}
+                      placeholder="Describe the event, agenda, speakers, prizes..."
+                      className={`${inputCls(errors.description)} resize-none`}
+                    />
+                  </Field>
+                </ModalSection>
+
+                {/* Banner Image */}
+                <ModalSection icon={<FiUploadCloud size={14} />} title="Event Banner" optional>
+                  {imagePreview ? (
+                    <div className="relative rounded-xl overflow-hidden border border-gray-200 group h-36">
+                      <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <button
+                          type="button"
+                          onClick={removeImage}
+                          className="bg-white text-gray-800 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 shadow-lg"
+                        >
+                          <FiX size={12} /> Change Image
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <label
+                      htmlFor="editModalImageUpload"
+                      className="flex items-center gap-4 border-2 border-dashed rounded-xl px-5 py-4 cursor-pointer transition-colors border-gray-200 bg-gray-50 hover:border-blue-600 hover:bg-blue-50/40"
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0">
+                        <FiUploadCloud size={18} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-700">Click to upload banner</p>
+                        <p className="text-xs text-gray-400 mt-0.5">PNG, JPG, WEBP — max 5MB</p>
+                      </div>
+                    </label>
+                  )}
+                  <input
+                    id="editModalImageUpload"
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                    onChange={handleImageChange}
+                    className="hidden"
+                  />
+                  {errors.image && <p className="text-xs text-red-500 mt-1.5">{errors.image}</p>}
+                </ModalSection>
+
+              </form>
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50 flex-shrink-0">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-5 py-2.5 rounded-lg text-sm font-semibold text-gray-600 border border-gray-200 bg-white hover:bg-gray-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                form="edit-event-form"
+                disabled={loading}
+                className="px-6 py-2.5 rounded-lg text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2 min-w-[140px] justify-center"
+              >
+                {loading ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <><FiSave size={15} /> Save Changes</>
+                )}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ================================================
+   ADMIN EVENT CARD
+================================================ */
+function AdminEventCard({ event, onEdit, onDelete }) {
+  const status = getEventStatus(event.startDate, event.endDate);
+  const cardProps = toCardProps(event);
+
+  const statusColors = {
+    Upcoming: "bg-blue-50 text-blue-600 border-blue-100",
+    Ongoing:  "bg-green-50 text-green-600 border-green-100",
+    Past:     "bg-gray-100 text-gray-500 border-gray-200",
+  };
+
+  const categoryColor = CATEGORY_COLORS[event.category] || "bg-gray-100 text-gray-500 border-gray-200";
+
+  return (
+    <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col">
+      {/* Image */}
+      <div className="relative h-44 bg-gray-100 flex-shrink-0">
+        <img
+          src={cardProps.image}
+          alt={cardProps.title}
+          className="w-full h-full object-cover"
+          onError={(e) => { e.target.src = "https://placehold.co/600x400?text=No+Image"; }}
+        />
+        {/* Status badge */}
+        <span className={`absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-semibold border ${statusColors[status]}`}>
+          {status}
+        </span>
+        {/* Category badge */}
+        <span className={`absolute top-3 right-3 px-2.5 py-1 rounded-full text-xs font-semibold border ${categoryColor}`}>
+          {event.category}
+        </span>
+      </div>
+
+      {/* Body */}
+      <div className="p-4 flex flex-col flex-1">
+        <h4 className="font-bold text-gray-900 text-sm leading-snug line-clamp-1 mb-1">
+          {event.title}
+        </h4>
+        <p className="text-xs text-gray-500 line-clamp-2 mb-3 flex-1">
+          {event.description}
+        </p>
+
+        <div className="space-y-1.5 text-xs text-gray-500 border-t border-gray-100 pt-3 mb-3">
+          <div className="flex items-center gap-2">
+            <FiCalendar size={12} className="flex-shrink-0 text-gray-400" />
+            <span>{formatDate(event.startDate)}
+              {formatDate(event.startDate) !== formatDate(event.endDate) && ` – ${formatDate(event.endDate)}`}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <FiMapPin size={12} className="flex-shrink-0 text-gray-400" />
+            <span className="truncate">{event.location}</span>
+          </div>
+          {cardProps.college && (
+            <div className="flex items-center gap-2">
+              <FiUser size={12} className="flex-shrink-0 text-gray-400" />
+              <span className="truncate">{cardProps.college}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-2">
+          <button
+            onClick={onEdit}
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-gray-200 text-gray-600 text-xs font-semibold hover:bg-gray-50 hover:border-gray-300 transition-colors"
+          >
+            <FiEdit2 size={13} /> Edit
+          </button>
+          <button
+            onClick={onDelete}
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-red-100 text-red-600 text-xs font-semibold hover:bg-red-50 transition-colors"
+          >
+            <FiTrash2 size={13} /> Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Delete Modal ── */
+function DeleteModal({ event, loading, error, onConfirm, onCancel }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onCancel} />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 z-10">
+        <div className="flex items-start gap-4">
+          <div className="w-11 h-11 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+            <FiAlertCircle size={22} className="text-red-600" />
+          </div>
+          <div>
+            <h3 className="font-bold text-gray-900 text-base">Delete Event</h3>
+            <p className="text-sm text-gray-500 mt-1">
+              Are you sure you want to delete{" "}
+              <span className="font-semibold text-gray-700">"{event.title}"</span>?
+              This action cannot be undone.
+            </p>
+          </div>
+        </div>
+        {error && (
+          <div className="mt-4 px-4 py-3 bg-red-50 border border-red-100 rounded-lg text-sm text-red-600">
+            {error}
+          </div>
+        )}
+        <div className="flex gap-3 mt-6">
+          <button onClick={onCancel} disabled={loading}
+            className="flex-1 py-2.5 rounded-lg border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50">
+            Cancel
+          </button>
+          <button onClick={onConfirm} disabled={loading}
+            className="flex-1 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold text-sm transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
+            {loading ? (
+              <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Deleting...</>
+            ) : (
+              <><FiTrash2 size={14} /> Delete</>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Skeleton ── */
+function EventsSkeleton() {
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="bg-white border border-slate-100 rounded-2xl overflow-hidden animate-pulse shadow-sm">
+          <div className="h-48 bg-gray-100" />
+          <div className="p-5 space-y-3">
+            <div className="h-4 bg-gray-100 rounded w-3/4" />
+            <div className="h-3 bg-gray-100 rounded w-full" />
+            <div className="h-3 bg-gray-100 rounded w-2/3" />
+            <div className="h-px bg-gray-100 my-3" />
+            <div className="h-3 bg-gray-100 rounded w-1/3" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ErrorState({ message, onRetry }) {
+  return (
+    <div className="bg-white border border-red-100 rounded-xl p-10 text-center">
+      <FiAlertCircle size={32} className="text-red-400 mx-auto mb-3" />
+      <p className="text-gray-700 font-medium">{message}</p>
+      <button onClick={onRetry} className="mt-4 px-5 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors">
+        Retry
+      </button>
+    </div>
+  );
+}
+
+function EmptyState({ hasFilters, onClear, onCreate }) {
+  return (
+    <div className="bg-white border border-gray-100 rounded-xl p-12 text-center">
+      <FiCalendar size={36} className="text-gray-300 mx-auto mb-3" />
+      <p className="text-gray-700 font-semibold text-base">
+        {hasFilters ? "No events match your filters" : "No events yet"}
+      </p>
+      <p className="text-sm text-gray-400 mt-1 mb-5">
+        {hasFilters ? "Try adjusting the search or filters." : "Create your first event to get started."}
+      </p>
+      {hasFilters ? (
+        <button onClick={onClear} className="px-5 py-2 rounded-lg border border-gray-200 text-gray-600 text-sm font-semibold hover:bg-gray-50 transition-colors">
+          Clear Filters
+        </button>
+      ) : (
+        <button onClick={onCreate} className="px-5 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors">
+          + Create Event
+        </button>
+      )}
+    </div>
+  );
+}
+
+/* ================================================
+   OVERVIEW
+================================================ */
 function OverviewSection() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 w-full">
@@ -87,7 +1241,6 @@ function OverviewSection() {
         <EventItem title="Basketball Championship" subtitle="sports-university · 160 participants" tag="sports" />
         <EventItem title="Web Development Workshop" subtitle="tech-university · 65 participants" tag="workshop" />
       </div>
-
       <div className="bg-white p-6 rounded-xl shadow-lg shadow-black/5 w-full min-w-0">
         <h3 className="mb-5 font-semibold">System Health</h3>
         <HealthRow label="Server Status" value="Healthy" good />
@@ -106,9 +1259,7 @@ function EventItem({ title, subtitle, tag }) {
         <div className="font-semibold truncate">{title}</div>
         <div className="text-[13px] text-gray-500 truncate">{subtitle}</div>
       </div>
-      <span className="text-xs px-3 py-1 rounded-full bg-blue-100 text-[#1F3C88] font-medium flex-shrink-0">
-        {tag}
-      </span>
+      <span className="text-xs px-3 py-1 rounded-full bg-blue-100 text-blue-600 font-medium flex-shrink-0">{tag}</span>
     </div>
   );
 }
@@ -122,43 +1273,39 @@ function HealthRow({ label, value, good }) {
   );
 }
 
-/* ---------- USER MANAGEMENT ---------- */
+/* ================================================
+   USER MANAGEMENT
+================================================ */
 function UserManagement() {
   const users = [
     { name: "John Doe", role: "Student", college: "Tech University", lastActive: "2 hours ago", status: "Active" },
     { name: "Sarah Wilson", role: "Organizer", college: "Arts College", lastActive: "1 day ago", status: "Active" },
   ];
-
   return (
     <div className="bg-white p-5 sm:p-6 rounded-xl shadow-md shadow-black/5 overflow-x-auto">
       <div className="flex justify-between items-center mb-5">
         <h3 className="font-semibold">User Activity</h3>
-        <button className="text-[#1F3C88] font-medium text-sm">View All Users</button>
+        <button className="text-blue-600 font-medium text-sm">View All Users</button>
       </div>
-
       <table className="w-full border-collapse min-w-[500px]">
         <thead>
           <tr className="text-left text-sm text-gray-500 border-b border-gray-200">
-            <th className="pb-3">User</th>
-            <th className="pb-3">Role</th>
-            <th className="pb-3">College</th>
-            <th className="pb-3">Last Active</th>
+            <th className="pb-3">User</th><th className="pb-3">Role</th>
+            <th className="pb-3">College</th><th className="pb-3">Last Active</th>
             <th className="pb-3">Status</th>
           </tr>
         </thead>
         <tbody>
-          {users.map((user, index) => (
-            <tr key={index} className="border-b border-gray-100 h-[60px]">
+          {users.map((user, i) => (
+            <tr key={i} className="border-b border-gray-100 h-[60px]">
               <td className="flex items-center gap-3 h-[60px]">
-                <div className="w-[34px] h-[34px] rounded-full bg-indigo-100 flex justify-center items-center text-[#1F3C88] flex-shrink-0">
+                <div className="w-[34px] h-[34px] rounded-full bg-indigo-100 flex justify-center items-center text-blue-600 flex-shrink-0">
                   <FiUser size={16} />
                 </div>
                 {user.name}
               </td>
               <td>
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                  user.role === "Student" ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800"
-                }`}>
+                <span className={`px-3 py-1 rounded-full text-xs font-medium ${user.role === "Student" ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800"}`}>
                   {user.role}
                 </span>
               </td>
@@ -173,62 +1320,20 @@ function UserManagement() {
   );
 }
 
-/* ---------- EVENT MANAGEMENT ---------- */
-function EventManagement() {
-  const navigate = useNavigate();
-
-  const events = [
-    { title: "Inter-College Hackathon 2024", college: "Tech University", category: "hackathon", participants: 127 },
-    { title: "Cultural Fest - Harmony 2024", college: "Arts College", category: "cultural", participants: 342 },
-    { title: "Basketball Championship", college: "Sports University", category: "sports", participants: 160 },
-    { title: "Web Development Workshop", college: "Tech University", category: "workshop", participants: 65 },
-  ];
-
-  return (
-    <div className="bg-white p-5 sm:p-6 rounded-xl shadow-md shadow-black/5">
-      <div className="flex justify-between mb-5 items-center">
-        <h3 className="font-semibold">Event Management</h3>
-        <button
-          onClick={() => navigate("/dashboard/collegeadmin/create-event")}
-          className="bg-[#1F3C88] text-white px-4 py-2 rounded-md font-semibold text-sm"
-        >
-          + Create Event
-        </button>
-      </div>
-
-      {events.map((event, index) => (
-        <div key={index} className="flex justify-between items-center p-4 border border-gray-200 rounded-lg mb-4 gap-3">
-          <div className="flex gap-4 items-center min-w-0">
-            <div className="w-[45px] h-[45px] rounded-md bg-indigo-50 flex justify-center items-center text-[#1F3C88] flex-shrink-0">
-              <FiCalendar size={20} />
-            </div>
-            <div className="min-w-0">
-              <div className="font-semibold truncate">{event.title}</div>
-              <div className="text-sm text-gray-500 truncate">{event.college} • {event.participants} participants</div>
-            </div>
-          </div>
-          <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-medium flex-shrink-0">
-            {event.category}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/* ---------- REGISTRATIONS ---------- */
+/* ================================================
+   REGISTRATIONS
+================================================ */
 function Registrations() {
   const registrations = [
     { name: "Rahul", event: "Hackathon 2024", college: "ABC College", status: "Approved" },
     { name: "Anita", event: "Cultural Fest", college: "XYZ College", status: "Pending" },
     { name: "John", event: "Web Workshop", college: "Tech University", status: "Rejected" },
   ];
-
   return (
     <div className="bg-white p-5 sm:p-6 rounded-xl shadow-md shadow-black/5">
       <h3 className="mb-5 text-lg font-semibold">Event Registrations</h3>
-      {registrations.map((reg, index) => (
-        <div key={index} className="flex justify-between p-4 border border-gray-200 rounded-lg mb-3 gap-3">
+      {registrations.map((reg, i) => (
+        <div key={i} className="flex justify-between p-4 border border-gray-200 rounded-lg mb-3 gap-3">
           <div className="min-w-0">
             <div className="font-semibold">{reg.name}</div>
             <div className="text-sm text-gray-500 truncate">{reg.event} • {reg.college}</div>
@@ -237,28 +1342,27 @@ function Registrations() {
             reg.status === "Approved" ? "bg-green-100 text-green-800"
             : reg.status === "Pending" ? "bg-yellow-100 text-yellow-800"
             : "bg-red-100 text-red-800"
-          }`}>
-            {reg.status}
-          </span>
+          }`}>{reg.status}</span>
         </div>
       ))}
     </div>
   );
 }
 
-/* ---------- ADMIN LOGS ---------- */
+/* ================================================
+   ADMIN LOGS
+================================================ */
 function AdminLogs() {
   const logs = [
     { action: "Approved event Hackathon 2024", admin: "Manikanta", time: "2 hours ago" },
     { action: "Rejected registration for Cultural Fest", admin: "Shambhavi", time: "5 hours ago" },
     { action: "Created new event Web Workshop", admin: "Manikanta", time: "1 day ago" },
   ];
-
   return (
     <div className="bg-white p-5 sm:p-6 rounded-xl shadow-md shadow-black/5">
       <h3 className="mb-5 text-lg font-semibold">Admin Activity Logs</h3>
-      {logs.map((log, index) => (
-        <div key={index} className="p-4 border-b border-gray-200">
+      {logs.map((log, i) => (
+        <div key={i} className="p-4 border-b border-gray-200">
           <div className="font-medium">{log.action}</div>
           <div className="text-sm text-gray-500">By {log.admin} • {log.time}</div>
         </div>
