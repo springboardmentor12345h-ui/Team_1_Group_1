@@ -9,6 +9,7 @@ import SuperAdminDashboard from "./pages/SuperAdminDashboard";
 import CreateEvent from "./pages/CreateEvent";
 import Chatbot from "./components/Chatbot";
 import Events from "./pages/Events";
+import EventDetail from "./pages/EventDetail";
 import Profile from "./pages/Profile";
 
 function App() {
@@ -26,6 +27,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/events" element={<Events />} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="/events/:id" element={<EventDetail />} />
 
         {/* Student Dashboard */}
         <Route

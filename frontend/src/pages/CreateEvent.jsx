@@ -1,9 +1,31 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import Navbar from "../components/Navbar";
-import toast from "react-hot-toast";
+import {
+  FiUploadCloud,
+  FiX,
+  FiCalendar,
+  FiMapPin,
+  FiTag,
+  FiFileText,
+  FiType,
+  FiArrowLeft,
+  FiCheckCircle,
+} from "react-icons/fi";
+
+const CATEGORIES = ["Tech", "Cultural", "Sports", "Workshop"];
+
+const CATEGORY_COLORS = {
+  Tech: "bg-blue-100 text-blue-700 border-blue-200",
+  Cultural: "bg-purple-100 text-purple-700 border-purple-200",
+  Sports: "bg-green-100 text-green-700 border-green-200",
+  Workshop: "bg-amber-100 text-amber-700 border-amber-200",
+};
 
 export default function CreateEvent() {
-  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const fileInputRef = useRef(null);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -14,180 +36,367 @@ export default function CreateEvent() {
     description: "",
   });
 
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [errors, setErrors] = useState({});
+  const [message, setMessage] = useState(null); // { type: "success"|"error", text }
+  const [loading, setLoading] = useState(false);
+
+  /* ---------- Handlers ---------- */
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
-  const validateForm = () => {
-    if (formData.title.length < 3) {
-      return "Title must be at least 3 characters";
-    }
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-    if (
-      formData.startDate &&
-      formData.endDate &&
-      new Date(formData.startDate) > new Date(formData.endDate)
-    ) {
-      return "End date must be after start date";
-    }
-
-    return null;
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-
-    const error = validateForm();
-    if (error) {
-      toast.error(error);
+    if (file.size > 5 * 1024 * 1024) {
+      setErrors((prev) => ({ ...prev, image: "Image must be under 5MB" }));
       return;
     }
 
-    setLoading(true);
-
-    // 🔥 Backend not ready yet
-    setTimeout(() => {
-      toast.success("Event created (UI demo only)");
-      setLoading(false);
-      setFormData({
-        title: "",
-        category: "",
-        startDate: "",
-        endDate: "",
-        location: "",
-        description: "",
-      });
-    }, 800);
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+    setErrors((prev) => ({ ...prev, image: "" }));
   };
 
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const validate = () => {
+    const newErrors = {};
+    if (!formData.title.trim() || formData.title.trim().length < 3)
+      newErrors.title = "Title must be at least 3 characters";
+    if (!formData.category) newErrors.category = "Please select a category";
+    if (!formData.location.trim()) newErrors.location = "Location is required";
+    if (!formData.startDate) newErrors.startDate = "Start date is required";
+    if (!formData.endDate) newErrors.endDate = "End date is required";
+    if (formData.startDate && formData.endDate &&
+      new Date(formData.startDate) > new Date(formData.endDate))
+      newErrors.endDate = "End date must be after start date";
+    if (!formData.description.trim())
+      newErrors.description = "Description is required";
+    return newErrors;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setMessage({ type: "error", text: "Unauthorized. Please login again." });
+      return;
+    }
+
+    // Build multipart form data to support image upload
+    const payload = new FormData();
+    Object.entries(formData).forEach(([key, val]) => payload.append(key, val));
+    if (imageFile) payload.append("image", imageFile);
+
+    try {
+      setLoading(true);
+      setMessage(null);
+
+      await axios.post("http://localhost:5000/api/events", payload, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      setMessage({ type: "success", text: "Event created successfully!" });
+
+      // Redirect to admin dashboard events tab after short delay
+      setTimeout(() => {
+        navigate("/dashboard/collegeadmin", { state: { activeTab: "events" } });
+      }, 1500);
+    } catch (err) {
+      setMessage({
+        type: "error",
+        text: err.response?.data?.message || "Failed to create event",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* ---------- UI ---------- */
   return (
     <>
       <Navbar />
 
-      <div className="min-h-screen flex justify-center items-center bg-gray-50 px-4 py-10">
-        <div className="w-full max-w-2xl bg-white rounded-2xl shadow-lg p-8">
+      <div className="min-h-screen bg-gray-50 pt-20 pb-10 px-4">
+        <div className="max-w-3xl mx-auto">
 
-          <h2 className="text-2xl font-semibold mb-2">
-            Create New Event
-          </h2>
-          <p className="text-sm text-gray-500 mb-6">
-            Fill in the details below to publish a campus event.
-          </p>
-
-          <form onSubmit={handleSubmit} className="space-y-5">
-
-            {/* Title */}
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Event Title
-              </label>
-              <input
-                type="text"
-                name="title"
-                value={formData.title}
-                onChange={handleChange}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                placeholder="Enter event title"
-              />
-            </div>
-
-            {/* Location */}
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Location
-              </label>
-              <input
-                type="text"
-                name="location"
-                value={formData.location}
-                onChange={handleChange}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                placeholder="Enter event location"
-              />
-            </div>
-
-            {/* Date Row */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Start Date
-                </label>
-                <input
-                  type="date"
-                  name="startDate"
-                  value={formData.startDate}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  End Date
-                </label>
-                <input
-                  type="date"
-                  name="endDate"
-                  value={formData.endDate}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                />
-              </div>
-            </div>
-
-            {/* Category */}
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Category
-              </label>
-              <select
-                name="category"
-                value={formData.category}
-                onChange={handleChange}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-              >
-                <option value="">Select Category</option>
-                <option value="Tech">Tech</option>
-                <option value="Cultural">Cultural</option>
-                <option value="Sports">Sports</option>
-                <option value="Workshop">Workshop</option>
-              </select>
-            </div>
-
-            {/* Description */}
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Description
-              </label>
-              <textarea
-                name="description"
-                rows="4"
-                value={formData.description}
-                onChange={handleChange}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                placeholder="Enter event description"
-              />
-            </div>
-
+          {/* Header */}
+          <div className="mb-6 flex items-center gap-3">
             <button
-              type="submit"
-              disabled={loading}
-              className={`w-full py-3 rounded-lg font-medium transition ${
-                loading
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-indigo-600 hover:bg-indigo-700 text-white"
+              onClick={() => navigate(-1)}
+              className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-[#1F3C88] transition-colors"
+            >
+              <FiArrowLeft size={16} />
+              Back
+            </button>
+          </div>
+
+          <div className="mb-7">
+            <h1 className="text-2xl font-bold text-gray-900">Create New Event</h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Fill in the details below to publish a new event for your college.
+            </p>
+          </div>
+
+          {/* Toast Message */}
+          {message && (
+            <div
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl mb-6 text-sm font-medium border ${
+                message.type === "success"
+                  ? "bg-green-50 text-green-700 border-green-200"
+                  : "bg-red-50 text-red-700 border-red-200"
               }`}
             >
-              {loading ? "Creating..." : "Create Event"}
-            </button>
+              {message.type === "success" ? (
+                <FiCheckCircle size={17} className="flex-shrink-0" />
+              ) : (
+                <FiX size={17} className="flex-shrink-0" />
+              )}
+              {message.text}
+            </div>
+          )}
 
+          <form onSubmit={handleSubmit} noValidate>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+
+              {/* ── Section: Basic Info ── */}
+              <SectionHeader icon={<FiType />} title="Basic Information" />
+              <div className="p-6 grid grid-cols-1 gap-5">
+
+                <Field label="Event Title" error={errors.title}>
+                  <input
+                    name="title"
+                    value={formData.title}
+                    onChange={handleChange}
+                    placeholder="e.g. Inter-College Hackathon 2025"
+                    className={inputCls(errors.title)}
+                  />
+                </Field>
+
+                {/* Category Pills */}
+                <Field label="Category" error={errors.category}>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {CATEGORIES.map((cat) => (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => {
+                          setFormData((p) => ({ ...p, category: cat }));
+                          setErrors((p) => ({ ...p, category: "" }));
+                        }}
+                        className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-all ${
+                          formData.category === cat
+                            ? CATEGORY_COLORS[cat] + " ring-2 ring-offset-1 ring-current"
+                            : "bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100"
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+
+              </div>
+
+              <Divider />
+
+              {/* ── Section: Date & Location ── */}
+              <SectionHeader icon={<FiCalendar />} title="Date & Location" />
+              <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-5">
+
+                <Field label="Start Date" error={errors.startDate}>
+                  <input
+                    type="date"
+                    name="startDate"
+                    value={formData.startDate}
+                    onChange={handleChange}
+                    min={new Date().toISOString().split("T")[0]}
+                    className={inputCls(errors.startDate)}
+                  />
+                </Field>
+
+                <Field label="End Date" error={errors.endDate}>
+                  <input
+                    type="date"
+                    name="endDate"
+                    value={formData.endDate}
+                    onChange={handleChange}
+                    min={formData.startDate || new Date().toISOString().split("T")[0]}
+                    className={inputCls(errors.endDate)}
+                  />
+                </Field>
+
+                <div className="sm:col-span-2">
+                  <Field label="Location" error={errors.location} icon={<FiMapPin size={15} className="text-gray-400" />}>
+                    <input
+                      name="location"
+                      value={formData.location}
+                      onChange={handleChange}
+                      placeholder="e.g. Main Auditorium, Block A"
+                      className={inputCls(errors.location)}
+                    />
+                  </Field>
+                </div>
+
+              </div>
+
+              <Divider />
+
+              {/* ── Section: Description ── */}
+              <SectionHeader icon={<FiFileText />} title="Description" />
+              <div className="p-6">
+                <Field label="Event Description" error={errors.description}>
+                  <textarea
+                    name="description"
+                    rows={5}
+                    value={formData.description}
+                    onChange={handleChange}
+                    placeholder="Describe the event, agenda, speakers, prizes..."
+                    className={`${inputCls(errors.description)} resize-none`}
+                  />
+                </Field>
+              </div>
+
+              <Divider />
+
+              {/* ── Section: Image ── */}
+              <SectionHeader icon={<FiUploadCloud />} title="Event Banner" optional />
+              <div className="p-6">
+                {imagePreview ? (
+                  <div className="relative rounded-xl overflow-hidden border border-gray-200 group">
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      className="w-full h-52 object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <button
+                        type="button"
+                        onClick={removeImage}
+                        className="bg-white text-gray-800 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 shadow-lg"
+                      >
+                        <FiX size={14} /> Remove Image
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <label
+                    htmlFor="imageUpload"
+                    className={`flex flex-col items-center justify-center gap-3 border-2 border-dashed rounded-xl p-10 cursor-pointer transition-colors ${
+                      errors.image
+                        ? "border-red-300 bg-red-50"
+                        : "border-gray-200 bg-gray-50 hover:border-[#1F3C88] hover:bg-blue-50/40"
+                    }`}
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center text-[#1F3C88]">
+                      <FiUploadCloud size={22} />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm font-semibold text-gray-700">
+                        Click to upload banner image
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        PNG, JPG, WEBP — max 5MB
+                      </p>
+                    </div>
+                  </label>
+                )}
+
+                <input
+                  id="imageUpload"
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/webp"
+                  onChange={handleImageChange}
+                  className="hidden"
+                />
+                {errors.image && (
+                  <p className="text-xs text-red-500 mt-2">{errors.image}</p>
+                )}
+              </div>
+
+              {/* ── Footer Buttons ── */}
+              <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => navigate(-1)}
+                  className="px-5 py-2.5 rounded-lg text-sm font-semibold text-gray-600 border border-gray-200 bg-white hover:bg-gray-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="px-6 py-2.5 rounded-lg text-sm font-semibold text-white bg-[#1F3C88] hover:bg-[#162d6b] transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2 min-w-[130px] justify-center"
+                >
+                  {loading ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    "Create Event"
+                  )}
+                </button>
+              </div>
+
+            </div>
           </form>
         </div>
       </div>
     </>
   );
+}
+
+/* ── Helpers ── */
+
+function SectionHeader({ icon, title, optional }) {
+  return (
+    <div className="px-6 py-4 flex items-center gap-2.5 border-b border-gray-100">
+      <span className="text-[#1F3C88] text-base">{icon}</span>
+      <span className="font-semibold text-gray-800 text-sm">{title}</span>
+      {optional && (
+        <span className="ml-1 text-xs text-gray-400 font-normal">(optional)</span>
+      )}
+    </div>
+  );
+}
+
+function Field({ label, children, error }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-sm font-semibold text-gray-700">{label}</label>
+      {children}
+      {error && <p className="text-xs text-red-500 mt-0.5">{error}</p>}
+    </div>
+  );
+}
+
+function Divider() {
+  return <div className="h-px bg-gray-100" />;
+}
+
+function inputCls(error) {
+  return `w-full px-3.5 py-2.5 rounded-lg border text-sm text-gray-800 placeholder-gray-400 outline-none transition-all focus:ring-2 focus:ring-[#1F3C88]/20 focus:border-[#1F3C88] ${
+    error ? "border-red-300 bg-red-50 focus:ring-red-100" : "border-gray-200 bg-white"
+  }`;
 }

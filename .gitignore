@@ -32,3 +32,8 @@ npm-debug.log*
 # =====================
 .DS_Store
 Thumbs.db
+# =====================
+# Uploaded files (user images)
+# =====================
+backend/uploads/
+uploads/

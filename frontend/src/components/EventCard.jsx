@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { FiCalendar, FiMapPin, FiArrowRight } from "react-icons/fi";
 
 const categoryColors = {
@@ -10,7 +11,12 @@ const categoryColors = {
 };
 
 export default function EventCard({ event, index = 0 }) {
+  const navigate = useNavigate();
   const colors = categoryColors[event.category] || categoryColors["Technical"];
+
+  const handleNavigate = () => {
+    if (event._id) navigate(`/events/${event._id}`);
+  };
 
   return (
     <motion.div
@@ -18,7 +24,8 @@ export default function EventCard({ event, index = 0 }) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-40px" }}
       transition={{ duration: 0.45, delay: index * 0.1, ease: [0.22, 1, 0.36, 1] }}
-      className="group relative bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col"
+      onClick={handleNavigate}
+      className="group relative bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col cursor-pointer"
     >
       {/* Image */}
       <div className="relative overflow-hidden h-48 flex-shrink-0">
@@ -76,7 +83,10 @@ export default function EventCard({ event, index = 0 }) {
         <div className="my-4 h-px bg-slate-100" />
 
         {/* CTA */}
-        <button className="flex items-center gap-1.5 text-sm font-semibold text-sky-600 hover:text-sky-800 transition-colors group/btn w-fit">
+        <button
+          onClick={(e) => { e.stopPropagation(); handleNavigate(); }}
+          className="flex items-center gap-1.5 text-sm font-semibold text-sky-600 hover:text-sky-800 transition-colors group/btn w-fit"
+        >
           View Details
           <FiArrowRight
             size={14}

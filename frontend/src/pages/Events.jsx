@@ -1,342 +1,723 @@
-import React, { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import axios from "axios";
 import Navbar from "../components/Navbar";
-import EventCard from "../components/EventCard";
 import Footer from "../components/Footer";
 import {
   FiSearch,
   FiCalendar,
   FiMapPin,
   FiArrowRight,
-  FiFilter,
   FiX,
+  FiChevronLeft,
+  FiChevronRight,
+  FiAlertCircle,
+  FiRefreshCw,
+  FiGrid,
+  FiList,
+  FiClock,
+  FiTag,
 } from "react-icons/fi";
 
-const events = [
-  {
-    _id: 1,
-    title: "Hackathon 2026",
-    description: "24-hour coding challenge for developers. Build fast, think faster.",
-    date: "March 15, 2026",
-    location: "Main Auditorium",
-    category: "Technical",
-    image: "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=800&q=80",
-  },
-  {
-    _id: 2,
-    title: "AI & ML Workshop",
-    description: "Hands-on session covering practical AI applications and real-world use cases.",
-    date: "March 20, 2026",
-    location: "Seminar Hall",
-    category: "Workshop",
-    image: "https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=800&q=80",
-  },
-  {
-    _id: 3,
-    title: "Cultural Night 2026",
-    description: "Music, dance and campus-wide celebration. One night, endless memories.",
-    date: "April 5, 2026",
-    location: "Open Ground",
-    category: "Cultural",
-    image: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800&q=80",
-  },
-  {
-    _id: 4,
-    title: "Startup Pitch Fest",
-    description: "Pitch your startup idea to industry mentors and investors.",
-    date: "April 12, 2026",
-    location: "Innovation Hub",
-    category: "Entrepreneurship",
-    image: "https://images.unsplash.com/photo-1556761175-4b46a572b786?w=800&q=80",
-  },
-  {
-    _id: 5,
-    title: "Robotics Championship",
-    description: "Compete with autonomous bots on a live arena course.",
-    date: "April 20, 2026",
-    location: "Tech Lab",
-    category: "Technical",
-    image: "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=800&q=80",
-  },
-  {
-    _id: 6,
-    title: "Photography Walk",
-    description: "Capture campus life through your lens with expert guidance.",
-    date: "May 1, 2026",
-    location: "Campus Grounds",
-    category: "Cultural",
-    image: "https://images.unsplash.com/photo-1452587925148-ce544e77e70d?w=800&q=80",
-  },
-];
+const BASE_URL = "http://localhost:5000";
+const EVENTS_PER_PAGE = 6;
+const CATEGORIES = ["All", "Tech", "Cultural", "Sports", "Workshop"];
 
-const CATEGORIES = ["All", "Technical", "Workshop", "Cultural", "Entrepreneurship"];
+/* ── Category styling ── */
+const CAT_STYLES = {
+  Tech:     { active: "bg-blue-600 text-white border-blue-600",     badge: "bg-blue-100 text-blue-700 border-blue-200",     dot: "bg-blue-500" },
+  Cultural: { active: "bg-purple-600 text-white border-purple-600", badge: "bg-purple-100 text-purple-700 border-purple-200", dot: "bg-purple-500" },
+  Sports:   { active: "bg-green-600 text-white border-green-600",   badge: "bg-green-100 text-green-700 border-green-200",   dot: "bg-green-500" },
+  Workshop: { active: "bg-amber-500 text-white border-amber-500",   badge: "bg-amber-100 text-amber-700 border-amber-200",   dot: "bg-amber-500" },
+  All:      { active: "bg-blue-600 text-white border-blue-600",  badge: "bg-blue-50 text-blue-600",                     dot: "bg-blue-600" },
+};
 
-const SORT_OPTIONS = [
-  { value: "default", label: "Sort By" },
-  { value: "newest", label: "Newest" },
-  { value: "oldest", label: "Oldest" },
-];
+const STATUS_STYLES = {
+  Upcoming: "bg-blue-50 text-blue-700 border-blue-200",
+  Ongoing:  "bg-green-50 text-green-700 border-green-200",
+  Past:     "bg-gray-100 text-gray-500 border-gray-200",
+};
 
-const DATE_OPTIONS = [
-  { value: "any", label: "Any Date" },
-  { value: "week", label: "This Week" },
-  { value: "month", label: "This Month" },
-  { value: "next", label: "Next Month" },
-];
+/* ── Helpers ── */
+function formatDate(date) {
+  return new Date(date).toLocaleDateString("en-IN", {
+    day: "numeric", month: "short", year: "numeric",
+  });
+}
 
+function getStatus(startDate, endDate) {
+  const now = new Date();
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  if (now < start) return "Upcoming";
+  if (now >= start && now <= end) return "Ongoing";
+  return "Past";
+}
+
+function toCardProps(event) {
+  const start = formatDate(event.startDate);
+  const end = formatDate(event.endDate);
+  return {
+    ...event,
+    _id: event._id,
+    dateStr: start === end ? start : `${start} – ${end}`,
+    college: event.createdBy?.college || event.createdBy?.name || "Campus",
+    imageUrl: event.image
+      ? `${BASE_URL}/${event.image}`
+      : `https://placehold.co/800x500/e8edf7/2563eb?text=${encodeURIComponent(event.title)}`,
+    status: getStatus(event.startDate, event.endDate),
+  };
+}
+
+/* ══════════════════════════════════════════════
+   MAIN PAGE
+══════════════════════════════════════════════ */
 export default function Events() {
+  const [allEvents, setAllEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
-  const [sortBy, setSortBy] = useState("default");
-  const [dateFilter, setDateFilter] = useState("any");
-  const [showFilters, setShowFilters] = useState(false);
+  const [page, setPage] = useState(1);
+  const [viewMode, setViewMode] = useState("grid"); // "grid" | "list"
 
-  const featured = events[0];
+  /* ── Fetch ── */
+  const fetchEvents = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const { data } = await axios.get(`${BASE_URL}/api/events`);
+      setAllEvents(data);
+    } catch {
+      setError("Unable to load events. Please check your connection.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const filtered = events.slice(1).filter((e) => {
-    const matchesSearch =
-      e.title.toLowerCase().includes(search.toLowerCase()) ||
-      e.description.toLowerCase().includes(search.toLowerCase());
-    const matchesCategory =
-      activeCategory === "All" || e.category === activeCategory;
-    return matchesSearch && matchesCategory;
+  useEffect(() => { fetchEvents(); }, []);
+  useEffect(() => { setPage(1); }, [search, activeCategory]);
+
+  /* ── Filter ── */
+  const filtered = allEvents.filter((ev) => {
+    const q = search.toLowerCase();
+    const matchSearch =
+      ev.title.toLowerCase().includes(q) ||
+      ev.description?.toLowerCase().includes(q) ||
+      ev.location?.toLowerCase().includes(q) ||
+      ev.createdBy?.college?.toLowerCase().includes(q);
+    const matchCat = activeCategory === "All" || ev.category === activeCategory;
+    return matchSearch && matchCat;
   });
+
+  /* ── Pagination ── */
+  const featured = filtered[0] ? toCardProps(filtered[0]) : null;
+  const rest = filtered.slice(1).map(toCardProps);
+  const totalPages = Math.max(1, Math.ceil(rest.length / EVENTS_PER_PAGE));
+  const paginated = rest.slice((page - 1) * EVENTS_PER_PAGE, page * EVENTS_PER_PAGE);
+
+  /* ── Stats ── */
+  const upcomingCount = allEvents.filter((e) => new Date(e.startDate) > new Date()).length;
+  const uniqueCategories = [...new Set(allEvents.map((e) => e.category))].length;
 
   return (
     <>
       <Navbar />
 
-      <div className="min-h-screen bg-slate-50 pt-16">
+      <div className="min-h-screen bg-gray-50 pt-16">
 
-        {/* ── HERO HEADER ── */}
-        <div className="bg-white border-b border-slate-100">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
+        {/* ══════════════════════════════
+            HERO
+        ══════════════════════════════ */}
+        <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 relative overflow-hidden">
+          {/* Decorative grid */}
+          <div
+            className="absolute inset-0 opacity-[0.07]"
+            style={{
+              backgroundImage:
+                "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
+              backgroundSize: "48px 48px",
+            }}
+          />
+          {/* Glow blobs */}
+          <div className="absolute -top-20 -right-20 w-96 h-96 bg-blue-400/20 rounded-full blur-[100px] pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-80 h-80 bg-indigo-600/20 rounded-full blur-[100px] pointer-events-none" />
+
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 pt-14 pb-16">
             <motion.div
-              initial={{ opacity: 0, y: 16 }}
+              initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
+              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             >
-              <p className="text-xs font-semibold tracking-widest text-sky-500 uppercase mb-2">
-                Campus Events
-              </p>
-              <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight">
-                Discover Events
+              {/* Eyebrow */}
+              <div className="flex items-center gap-2.5 mb-4">
+                <div className="w-8 h-px bg-blue-300" />
+                <span className="text-blue-200 text-xs font-bold tracking-[0.2em] uppercase">
+                  CampusEventHub
+                </span>
+              </div>
+
+              {/* Headline */}
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-tight tracking-tight">
+                Campus Events,
+                <br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-cyan-200">
+                  All in One Place
+                </span>
               </h1>
-              <p className="text-slate-500 mt-2 text-sm sm:text-base max-w-xl">
-                Workshops, hackathons, fests and more — all happening around you.
+
+              <p className="text-blue-200 mt-4 text-sm sm:text-base max-w-lg leading-relaxed">
+                Discover hackathons, cultural fests, workshops, and sports events happening across every campus.
               </p>
             </motion.div>
 
             {/* Search bar */}
             <motion.div
-              initial={{ opacity: 0, y: 12 }}
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              className="mt-7 relative max-w-2xl"
+              transition={{ delay: 0.15, duration: 0.5 }}
+              className="mt-8 max-w-2xl relative"
             >
-              <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-base" />
+              <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-base z-10" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search events, topics, locations..."
-                className="w-full pl-11 pr-11 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 focus:bg-white transition"
+                placeholder="Search by event name, location, or keyword..."
+                className="w-full pl-11 pr-12 py-3.5 bg-white rounded-xl text-sm text-gray-800 placeholder-gray-400 shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-300 transition"
               />
               {search && (
                 <button
                   onClick={() => setSearch("")}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 transition"
                 >
                   <FiX size={15} />
                 </button>
               )}
             </motion.div>
+
+            {/* Stats */}
+            {!loading && !error && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className="flex flex-wrap items-center gap-6 mt-8"
+              >
+                <HeroStat value={allEvents.length} label="Total Events" />
+                <div className="w-px h-7 bg-white/20" />
+                <HeroStat value={upcomingCount} label="Upcoming" />
+                <div className="w-px h-7 bg-white/20" />
+                <HeroStat value={uniqueCategories} label="Categories" />
+              </motion.div>
+            )}
           </div>
         </div>
 
-        {/* ── FILTER BAR ── */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 mt-6">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.15 }}
-            className="bg-white border border-slate-100 rounded-2xl shadow-sm p-4 sm:p-5"
-          >
-            {/* Mobile filter toggle */}
-            <div className="flex items-center justify-between sm:hidden mb-3">
-              <span className="text-sm font-medium text-slate-700">Filters</span>
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center gap-1.5 text-sm text-sky-600 font-medium"
-              >
-                <FiFilter size={14} />
-                {showFilters ? "Hide" : "Show"}
-              </button>
-            </div>
-
-            <div className={`${showFilters ? "flex" : "hidden"} sm:flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4`}>
-              {/* Category pills */}
-              <div className="flex flex-wrap gap-2">
-                {CATEGORIES.map((cat) => (
+        {/* ══════════════════════════════
+            FILTER / CONTROLS BAR
+        ══════════════════════════════ */}
+        <div className="sticky top-16 z-30 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-3">
+            {/* Category pills */}
+            <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide flex-1">
+              {CATEGORIES.map((cat) => {
+                const styles = CAT_STYLES[cat];
+                const isActive = activeCategory === cat;
+                return (
                   <button
                     key={cat}
                     onClick={() => setActiveCategory(cat)}
-                    className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 ${
-                      activeCategory === cat
-                        ? "bg-sky-600 text-white shadow-sm shadow-sky-200"
-                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 ${
+                      isActive
+                        ? styles.active
+                        : "bg-white text-gray-600 border-gray-200 hover:border-blue-600 hover:text-blue-600"
                     }`}
                   >
                     {cat}
                   </button>
-                ))}
-              </div>
-
-              {/* Dropdowns */}
-              <div className="flex gap-3 flex-wrap">
-                <select
-                  value={dateFilter}
-                  onChange={(e) => setDateFilter(e.target.value)}
-                  className="bg-slate-100 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer"
-                >
-                  {DATE_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
-
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="bg-slate-100 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer"
-                >
-                  {SORT_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
-              </div>
+                );
+              })}
             </div>
-          </motion.div>
-        </div>
 
-        {/* ── FEATURED EVENT ── */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 mt-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden"
-          >
-            <div className="flex flex-col lg:flex-row">
-              {/* Image */}
-              <div className="relative lg:w-[45%] h-56 sm:h-72 lg:h-auto flex-shrink-0 overflow-hidden">
-                <img
-                  src={featured.image}
-                  alt={featured.title}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/10 lg:block hidden" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent lg:hidden" />
-
-                {/* Mobile title overlay */}
-                <div className="absolute bottom-4 left-4 right-4 lg:hidden">
-                  <span className="text-xs font-semibold text-white/80 uppercase tracking-wider">Featured</span>
-                  <h2 className="text-xl font-bold text-white mt-0.5">{featured.title}</h2>
-                </div>
-              </div>
-
-              {/* Content */}
-              <div className="p-6 sm:p-8 flex flex-col justify-center lg:py-10">
-                <span className="hidden lg:inline-block text-xs font-semibold tracking-widest text-sky-500 uppercase mb-3">
-                  ✦ Featured Event
-                </span>
-                <h2 className="hidden lg:block text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight leading-tight">
-                  {featured.title}
-                </h2>
-                <p className="text-slate-500 mt-3 text-sm leading-relaxed max-w-lg">
-                  {featured.description}
-                </p>
-
-                <div className="flex flex-wrap gap-4 mt-5 text-slate-600 text-sm">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg bg-sky-50 flex items-center justify-center">
-                      <FiCalendar size={13} className="text-sky-600" />
-                    </div>
-                    <span>{featured.date}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg bg-sky-50 flex items-center justify-center">
-                      <FiMapPin size={13} className="text-sky-600" />
-                    </div>
-                    <span>{featured.location}</span>
-                  </div>
-                </div>
-
-                <div className="mt-7 flex flex-wrap gap-3">
-                  <button className="bg-sky-600 hover:bg-sky-700 text-white px-6 py-2.5 rounded-xl text-sm font-semibold transition flex items-center gap-2 group shadow-sm shadow-sky-200">
-                    Register Now
-                    <FiArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
-                  </button>
-                  <button className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 rounded-xl text-sm font-semibold transition">
-                    Learn More
-                  </button>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-
-        {/* ── UPCOMING EVENTS GRID ── */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 mt-12 pb-16">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-lg sm:text-xl font-bold text-slate-900">Upcoming Events</h2>
-              <p className="text-xs text-slate-400 mt-0.5">
-                {filtered.length} event{filtered.length !== 1 ? "s" : ""} found
-              </p>
-            </div>
-            <button className="text-sky-600 text-sm font-semibold hover:text-sky-800 transition flex items-center gap-1 group">
-              View All
-              <FiArrowRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
-            </button>
-          </div>
-
-          <AnimatePresence mode="wait">
-            {filtered.length > 0 ? (
-              <motion.div
-                key={activeCategory + search}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.25 }}
-                className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
+            {/* View toggle */}
+            <div className="flex items-center gap-1 flex-shrink-0 bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setViewMode("grid")}
+                className={`w-7 h-7 flex items-center justify-center rounded-md transition-colors ${
+                  viewMode === "grid" ? "bg-white shadow-sm text-blue-600" : "text-gray-400 hover:text-gray-600"
+                }`}
               >
-                {filtered.map((event, i) => (
-                  <EventCard key={event._id} event={event} index={i} />
-                ))}
-              </motion.div>
-            ) : (
-              <motion.div
-                key="empty"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-center py-20"
+                <FiGrid size={14} />
+              </button>
+              <button
+                onClick={() => setViewMode("list")}
+                className={`w-7 h-7 flex items-center justify-center rounded-md transition-colors ${
+                  viewMode === "list" ? "bg-white shadow-sm text-blue-600" : "text-gray-400 hover:text-gray-600"
+                }`}
               >
-                <div className="text-4xl mb-3">🔍</div>
-                <p className="text-slate-500 font-medium">No events found</p>
-                <p className="text-slate-400 text-sm mt-1">Try adjusting your filters or search query</p>
-                <button
-                  onClick={() => { setSearch(""); setActiveCategory("All"); }}
-                  className="mt-5 text-sky-600 text-sm font-semibold hover:underline"
-                >
-                  Clear all filters
-                </button>
-              </motion.div>
+                <FiList size={14} />
+              </button>
+            </div>
+
+            {/* Clear filters */}
+            {(search || activeCategory !== "All") && (
+              <button
+                onClick={() => { setSearch(""); setActiveCategory("All"); }}
+                className="flex-shrink-0 flex items-center gap-1.5 text-xs font-medium text-gray-400 hover:text-red-500 transition-colors border border-gray-200 rounded-full px-3 py-1.5"
+              >
+                <FiX size={11} /> Clear
+              </button>
             )}
-          </AnimatePresence>
+          </div>
+        </div>
+
+        {/* ══════════════════════════════
+            BODY
+        ══════════════════════════════ */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
+
+          {/* Loading */}
+          {loading && <LoadingSkeleton viewMode={viewMode} />}
+
+          {/* Error */}
+          {!loading && error && <ErrorState message={error} onRetry={fetchEvents} />}
+
+          {/* Empty */}
+          {!loading && !error && filtered.length === 0 && (
+            <EmptyState onClear={() => { setSearch(""); setActiveCategory("All"); }} />
+          )}
+
+          {/* Content */}
+          {!loading && !error && filtered.length > 0 && (
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={`${activeCategory}-${search}-${page}-${viewMode}`}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                {/* ── Featured event (first result, page 1 only) ── */}
+                {featured && page === 1 && (
+                  <div className="mb-12">
+                    <SectionLabel icon="✦" text="Featured Event" />
+                    <FeaturedCard event={featured} />
+                  </div>
+                )}
+
+                {/* ── Event grid / list ── */}
+                {paginated.length > 0 && (
+                  <div className="mb-10">
+                    <div className="flex items-center justify-between mb-5">
+                      <SectionLabel
+                        icon={<FiGrid size={13} />}
+                        text={
+                          activeCategory === "All"
+                            ? `All Events`
+                            : `${activeCategory} Events`
+                        }
+                        count={rest.length}
+                      />
+                    </div>
+
+                    {viewMode === "grid" ? (
+                      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                        {paginated.map((event, i) => (
+                          <GridCard key={event._id} event={event} index={i} />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-4">
+                        {paginated.map((event, i) => (
+                          <ListCard key={event._id} event={event} index={i} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── Pagination ── */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-center gap-2 mt-10">
+                    <button
+                      disabled={page === 1}
+                      onClick={() => setPage((p) => p - 1)}
+                      className="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 hover:border-blue-600 hover:text-blue-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <FiChevronLeft size={16} />
+                    </button>
+
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => setPage(p)}
+                        className={`w-9 h-9 rounded-lg text-sm font-bold transition-all ${
+                          page === p
+                            ? "bg-blue-600 text-white shadow-md shadow-blue-900/20"
+                            : "bg-white border border-gray-200 text-gray-600 hover:border-blue-600 hover:text-blue-600"
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    ))}
+
+                    <button
+                      disabled={page === totalPages}
+                      onClick={() => setPage((p) => p + 1)}
+                      className="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 hover:border-blue-600 hover:text-blue-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <FiChevronRight size={16} />
+                    </button>
+                  </div>
+                )}
+              </motion.div>
+            </AnimatePresence>
+          )}
         </div>
       </div>
 
       <Footer />
     </>
+  );
+}
+
+/* ══════════════════════════════════════════════
+   FEATURED CARD
+══════════════════════════════════════════════ */
+function FeaturedCard({ event }) {
+  const navigate = useNavigate();
+  const catStyle = CAT_STYLES[event.category] || CAT_STYLES.All;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="group relative rounded-2xl overflow-hidden bg-white border border-gray-100 shadow-lg shadow-gray-200/60 hover:shadow-xl hover:shadow-blue-100/40 transition-all duration-300"
+    >
+      <div className="flex flex-col lg:flex-row min-h-[300px]">
+
+        {/* Image */}
+        <div className="relative lg:w-[50%] h-56 sm:h-72 lg:h-auto flex-shrink-0 overflow-hidden bg-gray-100">
+          <img
+            src={event.imageUrl}
+            alt={event.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+
+          {/* Badges */}
+          <div className="absolute top-4 left-4 flex items-center gap-2">
+            <span className={`text-xs font-bold px-3 py-1.5 rounded-full border ${catStyle.badge}`}>
+              {event.category}
+            </span>
+            <span className={`text-xs font-semibold px-3 py-1.5 rounded-full border ${STATUS_STYLES[event.status]}`}>
+              {event.status}
+            </span>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 p-7 sm:p-9 flex flex-col justify-between">
+          <div>
+            <p className="text-xs font-bold tracking-[0.15em] uppercase text-blue-600 mb-3 flex items-center gap-1.5">
+              <span className="w-4 h-px bg-blue-600" /> Featured Event
+            </p>
+
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 leading-tight tracking-tight mb-3 group-hover:text-blue-600 transition-colors duration-300">
+              {event.title}
+            </h2>
+
+            {event.description && (
+              <p className="text-gray-500 text-sm leading-relaxed line-clamp-3 mb-6">
+                {event.description}
+              </p>
+            )}
+
+            <div className="flex flex-col gap-2.5 mb-7">
+              <MetaRow icon={<FiCalendar size={13} />} text={event.dateStr} />
+              {event.location && <MetaRow icon={<FiMapPin size={13} />} text={event.location} />}
+              {event.college && <MetaRow icon={<FiTag size={13} />} text={event.college} />}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={() => navigate(`/events/${event._id}`)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center gap-2 shadow-md shadow-blue-900/20 group/btn"
+            >
+              Register Now
+              <FiArrowRight size={14} className="group-hover/btn:translate-x-0.5 transition-transform" />
+            </button>
+            <button
+              onClick={() => navigate(`/events/${event._id}`)}
+              className="border border-gray-200 hover:border-blue-600 hover:text-blue-600 text-gray-600 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 bg-white"
+            >
+              View Details
+            </button>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+/* ══════════════════════════════════════════════
+   GRID CARD
+══════════════════════════════════════════════ */
+function GridCard({ event, index }) {
+  const navigate = useNavigate();
+  const catStyle = CAT_STYLES[event.category] || CAT_STYLES.All;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: index * 0.05 }}
+      onClick={() => navigate(`/events/${event._id}`)}
+      className="group bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-blue-100/30 hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col"
+    >
+      {/* Image */}
+      <div className="relative h-44 overflow-hidden bg-gray-100 flex-shrink-0">
+        <img
+          src={event.imageUrl}
+          alt={event.title}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+
+        <div className="absolute top-3 left-3 flex items-center gap-2">
+          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${catStyle.badge}`}>
+            {event.category}
+          </span>
+        </div>
+
+        <div className="absolute top-3 right-3">
+          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${STATUS_STYLES[event.status]}`}>
+            {event.status}
+          </span>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="p-5 flex flex-col flex-1">
+        <h3 className="font-bold text-gray-900 text-base leading-snug mb-2 group-hover:text-blue-600 transition-colors line-clamp-2">
+          {event.title}
+        </h3>
+
+        {event.description && (
+          <p className="text-gray-400 text-xs leading-relaxed mb-4 line-clamp-2">
+            {event.description}
+          </p>
+        )}
+
+        <div className="mt-auto flex flex-col gap-1.5 mb-4">
+          <MetaRow icon={<FiCalendar size={11} />} text={event.dateStr} small />
+          {event.location && <MetaRow icon={<FiMapPin size={11} />} text={event.location} small />}
+        </div>
+
+        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+          {event.college && (
+            <span className="text-xs text-gray-400 font-medium truncate mr-2">{event.college}</span>
+          )}
+          <button
+            onClick={(e) => { e.stopPropagation(); navigate(`/events/${event._id}`); }}
+            className="flex-shrink-0 text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 transition-colors group/link"
+          >
+            Register <FiArrowRight size={11} className="group-hover/link:translate-x-0.5 transition-transform" />
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+/* ══════════════════════════════════════════════
+   LIST CARD
+══════════════════════════════════════════════ */
+function ListCard({ event, index }) {
+  const navigate = useNavigate();
+  const catStyle = CAT_STYLES[event.category] || CAT_STYLES.All;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -12 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.35, delay: index * 0.04 }}
+      onClick={() => navigate(`/events/${event._id}`)}
+      className="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg hover:shadow-blue-100/30 transition-all duration-300 overflow-hidden cursor-pointer"
+    >
+      <div className="flex gap-0">
+        {/* Image (thumbnail) */}
+        <div className="relative w-40 sm:w-52 flex-shrink-0 overflow-hidden bg-gray-100 hidden sm:block">
+          <img
+            src={event.imageUrl}
+            alt={event.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+          />
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 p-5 sm:p-6 flex flex-col justify-between min-w-0">
+          <div>
+            <div className="flex flex-wrap items-center gap-2 mb-2.5">
+              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${catStyle.badge}`}>
+                {event.category}
+              </span>
+              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${STATUS_STYLES[event.status]}`}>
+                {event.status}
+              </span>
+            </div>
+
+            <h3 className="font-bold text-gray-900 text-base leading-snug mb-1.5 group-hover:text-blue-600 transition-colors truncate">
+              {event.title}
+            </h3>
+
+            {event.description && (
+              <p className="text-gray-400 text-xs leading-relaxed line-clamp-2 mb-3">
+                {event.description}
+              </p>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <MetaRow icon={<FiCalendar size={11} />} text={event.dateStr} small />
+              {event.location && <MetaRow icon={<FiMapPin size={11} />} text={event.location} small />}
+              {event.college && <MetaRow icon={<FiTag size={11} />} text={event.college} small />}
+            </div>
+            <button
+              onClick={(e) => { e.stopPropagation(); navigate(`/events/${event._id}`); }}
+              className="flex-shrink-0 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors flex items-center gap-1.5"
+            >
+              Register <FiArrowRight size={11} />
+            </button>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+/* ══════════════════════════════════════════════
+   HELPERS / MICRO-COMPONENTS
+══════════════════════════════════════════════ */
+function MetaRow({ icon, text, small }) {
+  return (
+    <div className={`flex items-center gap-1.5 text-gray-500 ${small ? "text-xs" : "text-sm"}`}>
+      <span className="text-blue-600 flex-shrink-0">{icon}</span>
+      <span className="truncate">{text}</span>
+    </div>
+  );
+}
+
+function HeroStat({ value, label }) {
+  return (
+    <div className="flex items-baseline gap-1.5">
+      <span className="text-2xl font-extrabold text-white tabular-nums">{value}</span>
+      <span className="text-xs text-blue-200 font-medium">{label}</span>
+    </div>
+  );
+}
+
+function SectionLabel({ icon, text, count }) {
+  return (
+    <div className="flex items-center gap-2 mb-4">
+      <span className="text-blue-600 text-xs">{icon}</span>
+      <p className="text-xs font-extrabold tracking-[0.15em] uppercase text-gray-400">
+        {text}
+        {count !== undefined && (
+          <span className="ml-2 text-gray-400 font-normal normal-case tracking-normal">
+            ({count} event{count !== 1 ? "s" : ""})
+          </span>
+        )}
+      </p>
+    </div>
+  );
+}
+
+/* ── Loading Skeleton ── */
+function LoadingSkeleton({ viewMode }) {
+  if (viewMode === "list") {
+    return (
+      <div className="flex flex-col gap-4">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="bg-white rounded-2xl border border-gray-100 overflow-hidden animate-pulse h-28 flex">
+            <div className="w-52 bg-gray-100 flex-shrink-0 hidden sm:block" />
+            <div className="flex-1 p-5 space-y-3">
+              <div className="h-3 bg-gray-100 rounded w-1/4" />
+              <div className="h-4 bg-gray-100 rounded w-3/4" />
+              <div className="h-3 bg-gray-100 rounded w-full" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {/* Featured skeleton */}
+      <div className="rounded-2xl overflow-hidden bg-white border border-gray-100 animate-pulse mb-12 h-64 lg:h-72" />
+
+      {/* Grid skeleton */}
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="bg-white rounded-2xl overflow-hidden border border-gray-100 animate-pulse shadow-sm">
+            <div className="h-44 bg-gray-100" />
+            <div className="p-5 space-y-3">
+              <div className="h-4 bg-gray-100 rounded w-3/4" />
+              <div className="h-3 bg-gray-100 rounded w-full" />
+              <div className="h-3 bg-gray-100 rounded w-2/3" />
+              <div className="h-px bg-gray-100 my-2" />
+              <div className="h-3 bg-gray-100 rounded w-1/3" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── Error State ── */
+function ErrorState({ message, onRetry }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-28 text-center">
+      <div className="w-16 h-16 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center mb-5 shadow-sm">
+        <FiAlertCircle size={28} className="text-red-400" />
+      </div>
+      <p className="text-gray-800 font-bold text-base mb-1">{message}</p>
+      <p className="text-gray-400 text-sm mb-7">Check your connection and try again.</p>
+      <button
+        onClick={onRetry}
+        className="flex items-center gap-2 bg-blue-600 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors shadow-md shadow-blue-900/20"
+      >
+        <FiRefreshCw size={13} /> Try Again
+      </button>
+    </div>
+  );
+}
+
+/* ── Empty State ── */
+function EmptyState({ onClear }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-28 text-center">
+      <div className="w-20 h-20 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center mb-5 text-4xl">
+        🗓️
+      </div>
+      <p className="text-gray-900 font-extrabold text-xl mb-1">No events found</p>
+      <p className="text-gray-400 text-sm mb-7 max-w-xs">
+        Try a different keyword or browse all categories.
+      </p>
+      <button
+        onClick={onClear}
+        className="bg-blue-600 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors shadow-md shadow-blue-900/20"
+      >
+        Clear Filters
+      </button>
+    </div>
   );
 }
