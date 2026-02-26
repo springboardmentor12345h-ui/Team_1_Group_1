@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, useScroll, useTransform } from "framer-motion";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import { useAuth } from "../context/AuthContext";
 import {
   ArrowRight,
   Users,
@@ -38,6 +39,14 @@ function formatDate(date) {
   });
 }
 
+function formatTime(date) {
+  const d = new Date(date);
+  if (d.getHours() === 0 && d.getMinutes() === 0) return null;
+  return d.toLocaleTimeString("en-IN", {
+    hour: "2-digit", minute: "2-digit", hour12: true,
+  });
+}
+
 function getStatus(startDate, endDate) {
   const now = new Date();
   const start = new Date(startDate);
@@ -52,6 +61,9 @@ function getStatus(startDate, endDate) {
 ══════════════════════════════════════════════ */
 export default function Home() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isStudent = !user || user.role === "student";
+
   const heroRef = useRef(null);
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
   const heroY = useTransform(scrollYProgress, [0, 1], ["0%", "30%"]);
@@ -207,19 +219,21 @@ export default function Home() {
                 </button>
               </motion.div>
 
-              {/* CTAs */}
+              {/* CTAs — only show Get Started to students/guests */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.35 }}
                 className="flex flex-wrap items-center gap-3 mb-10"
               >
-                <button
-                  onClick={() => navigate("/register")}
-                  className="px-7 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold shadow-lg shadow-blue-600/30 flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
-                >
-                  Get Started Free <ArrowRight className="w-4 h-4" />
-                </button>
+                {isStudent && (
+                  <button
+                    onClick={() => navigate("/register")}
+                    className="px-7 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold shadow-lg shadow-blue-600/30 flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
+                  >
+                    Get Started Free <ArrowRight className="w-4 h-4" />
+                  </button>
+                )}
                 <button
                   onClick={() => navigate("/events")}
                   className="px-7 py-3.5 rounded-xl border border-white/15 text-white/80 hover:bg-white/8 hover:text-white font-semibold transition-all"
@@ -359,7 +373,7 @@ export default function Home() {
           ) : filteredEvents.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredEvents.map((event, i) => (
-                <LiveEventCard key={event._id} event={event} index={i} />
+                <LiveEventCard key={event._id} event={event} index={i} isStudent={isStudent} />
               ))}
             </div>
           ) : (
@@ -487,7 +501,6 @@ export default function Home() {
                 transition={{ delay: i * 0.15 }}
                 className="relative bg-white rounded-2xl p-8 border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all duration-300 z-10 group"
               >
-                {/* Step number */}
                 <div className="absolute -top-4 left-8 bg-blue-600 text-white text-xs font-black px-3 py-1.5 rounded-full shadow-md shadow-blue-600/30">
                   {step.step}
                 </div>
@@ -643,15 +656,12 @@ export default function Home() {
                 transition={{ delay: i * 0.12 }}
                 className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col gap-4"
               >
-                {/* Stars */}
                 <div className="flex gap-0.5">
                   {[...Array(t.stars)].map((_, j) => (
                     <Star key={j} className="w-4 h-4 fill-amber-400 text-amber-400" />
                   ))}
                 </div>
-
                 <p className="text-gray-700 text-sm leading-relaxed flex-1">"{t.text}"</p>
-
                 <div className="flex items-center gap-3 pt-2 border-t border-gray-50">
                   <div className={`w-10 h-10 rounded-full ${t.color} text-white text-sm font-bold flex items-center justify-center flex-shrink-0`}>
                     {t.avatar}
@@ -678,7 +688,6 @@ export default function Home() {
           transition={{ duration: 0.5 }}
           className="max-w-4xl mx-auto relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 text-white shadow-2xl shadow-blue-600/20 p-12 sm:p-16 text-center"
         >
-          {/* Background decoration */}
           <div className="absolute -top-20 -right-20 w-64 h-64 bg-white/10 rounded-full blur-2xl" />
           <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-indigo-400/20 rounded-full blur-2xl" />
 
@@ -696,23 +705,27 @@ export default function Home() {
             </p>
 
             <div className="flex flex-wrap items-center justify-center gap-3">
-              <button
-                onClick={() => navigate("/register")}
-                className="px-8 py-3.5 rounded-xl bg-white text-blue-700 font-bold shadow-lg hover:scale-105 transition-all active:scale-95 flex items-center gap-2"
-              >
-                Join Now — It's Free <ArrowRight className="w-4 h-4" />
-              </button>
+              {isStudent && (
+                <button
+                  onClick={() => navigate("/register")}
+                  className="px-8 py-3.5 rounded-xl bg-white text-blue-700 font-bold shadow-lg hover:scale-105 transition-all active:scale-95 flex items-center gap-2"
+                >
+                  Join Now — It's Free <ArrowRight className="w-4 h-4" />
+                </button>
+              )}
               <button
                 onClick={() => navigate("/events")}
                 className="px-8 py-3.5 rounded-xl border border-white/25 text-white/90 hover:bg-white/10 font-semibold transition-all"
               >
-                Browse Events First
+                Browse Events {isStudent ? "First" : ""}
               </button>
             </div>
 
-            <p className="mt-6 text-blue-200/70 text-xs">
-              No credit card required · Free for students · Join 1000+ members
-            </p>
+            {isStudent && (
+              <p className="mt-6 text-blue-200/70 text-xs">
+                No credit card required · Free for students · Join 1000+ members
+              </p>
+            )}
           </div>
         </motion.div>
       </section>
@@ -728,6 +741,7 @@ export default function Home() {
 function HeroEventCard({ event, index }) {
   const cat = CAT_STYLES[event.category] || CAT_STYLES.Tech;
   const status = getStatus(event.startDate, event.endDate);
+  const timeStr = formatTime(event.startDate);
   const imageUrl = event.image
     ? `${BASE_URL}/${event.image}`
     : `https://placehold.co/600x300/1e3a8a/93c5fd?text=${encodeURIComponent(event.title)}`;
@@ -756,9 +770,17 @@ function HeroEventCard({ event, index }) {
             </span>
           </div>
           <h4 className="text-white font-semibold text-sm truncate mb-1">{event.title}</h4>
-          <div className="flex items-center gap-1 text-slate-400 text-xs">
-            <Calendar className="w-3 h-3 flex-shrink-0" />
-            <span className="truncate">{formatDate(event.startDate)}</span>
+          <div className="flex items-center gap-3 text-slate-400 text-xs">
+            <span className="flex items-center gap-1">
+              <Calendar className="w-3 h-3 flex-shrink-0" />
+              {formatDate(event.startDate)}
+            </span>
+            {timeStr && (
+              <span className="flex items-center gap-1 text-blue-300 font-semibold">
+                <Clock className="w-3 h-3 flex-shrink-0" />
+                {timeStr}
+              </span>
+            )}
           </div>
         </div>
 
@@ -773,9 +795,9 @@ function FallbackHeroCard() {
   return (
     <div className="space-y-4">
       {[
-        { title: "Hackathon 2026", date: "Mar 12 • NBKRIST", cat: "Tech", color: "from-blue-900 to-blue-800", status: "Upcoming" },
-        { title: "Cultural Fest", date: "Apr 05 • SVU", cat: "Cultural", color: "from-purple-900 to-purple-800", status: "Upcoming" },
-        { title: "Sports Meet", date: "May 20 • JNTU", cat: "Sports", color: "from-green-900 to-green-800", status: "Upcoming" },
+        { title: "Hackathon 2026", date: "Mar 12 • NBKRIST", time: "09:00 AM", cat: "Tech", color: "from-blue-900 to-blue-800", status: "Upcoming" },
+        { title: "Cultural Fest", date: "Apr 05 • SVU", time: "10:00 AM", cat: "Cultural", color: "from-purple-900 to-purple-800", status: "Upcoming" },
+        { title: "Sports Meet", date: "May 20 • JNTU", time: "08:00 AM", cat: "Sports", color: "from-green-900 to-green-800", status: "Upcoming" },
       ].map((item, i) => (
         <motion.div
           key={i}
@@ -795,7 +817,12 @@ function FallbackHeroCard() {
               <span className="text-[10px] text-blue-300 font-semibold">● {item.status}</span>
             </div>
             <h4 className="text-white font-semibold text-sm">{item.title}</h4>
-            <p className="text-slate-400 text-xs mt-0.5">{item.date}</p>
+            <div className="flex items-center gap-3 text-slate-400 text-xs mt-0.5">
+              <span>{item.date}</span>
+              <span className="flex items-center gap-1 text-blue-300 font-semibold">
+                <Clock className="w-3 h-3" /> {item.time}
+              </span>
+            </div>
           </div>
           <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-blue-400 flex-shrink-0 transition-colors" />
         </motion.div>
@@ -807,18 +834,23 @@ function FallbackHeroCard() {
 /* ══════════════════════════════════════════════
    LIVE EVENT CARD (main section)
 ══════════════════════════════════════════════ */
-function LiveEventCard({ event, index }) {
+function LiveEventCard({ event, index, isStudent }) {
   const navigate = useNavigate();
   const cat = CAT_STYLES[event.category] || CAT_STYLES.Tech;
   const status = getStatus(event.startDate, event.endDate);
+  const timeStr = formatTime(event.startDate);
+  const endTimeStr = formatTime(event.endDate);
+  const isSameDay =
+    new Date(event.startDate).toDateString() === new Date(event.endDate).toDateString();
+
   const imageUrl = event.image
     ? `${BASE_URL}/${event.image}`
     : `https://placehold.co/800x500/e8edf7/2563eb?text=${encodeURIComponent(event.title)}`;
 
   const STATUS_STYLES = {
     Upcoming: "bg-blue-50 text-blue-700 border-blue-200",
-    Ongoing: "bg-green-50 text-green-700 border-green-200",
-    Past: "bg-gray-100 text-gray-500 border-gray-200",
+    Ongoing:  "bg-green-50 text-green-700 border-green-200",
+    Past:     "bg-gray-100 text-gray-500 border-gray-200",
   };
 
   return (
@@ -826,7 +858,7 @@ function LiveEventCard({ event, index }) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: index * 0.07 }}
-      onClick={() => navigate("/events")}
+      onClick={() => navigate(`/events/${event._id}`)}
       className="group bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-blue-100/30 hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col"
     >
       {/* Image */}
@@ -848,6 +880,13 @@ function LiveEventCard({ event, index }) {
             {status}
           </span>
         </div>
+
+        {/* Time badge on image */}
+        {timeStr && (
+          <div className="absolute bottom-3 left-3 flex items-center gap-1 bg-black/60 backdrop-blur-sm text-white text-[10px] font-bold px-2.5 py-1 rounded-full">
+            <Clock className="w-3 h-3" /> {timeStr}
+          </div>
+        )}
       </div>
 
       {/* Content */}
@@ -861,10 +900,24 @@ function LiveEventCard({ event, index }) {
         )}
 
         <div className="mt-auto flex flex-col gap-1.5 mb-4">
+          {/* Date */}
           <div className="flex items-center gap-1.5 text-gray-500 text-xs">
             <Calendar className="w-3 h-3 text-blue-600 flex-shrink-0" />
-            <span>{formatDate(event.startDate)}</span>
+            <span>
+              {formatDate(event.startDate)}
+              {!isSameDay && ` – ${formatDate(event.endDate)}`}
+            </span>
           </div>
+          {/* Time */}
+          {timeStr && (
+            <div className="flex items-center gap-1.5 text-xs text-blue-600 font-semibold">
+              <Clock className="w-3 h-3 flex-shrink-0" />
+              <span>
+                {timeStr}
+                {isSameDay && endTimeStr && endTimeStr !== timeStr ? ` – ${endTimeStr}` : ""}
+              </span>
+            </div>
+          )}
           {event.location && (
             <div className="flex items-center gap-1.5 text-gray-500 text-xs">
               <MapPin className="w-3 h-3 text-blue-600 flex-shrink-0" />
@@ -875,11 +928,25 @@ function LiveEventCard({ event, index }) {
 
         <div className="flex items-center justify-between pt-3 border-t border-gray-100">
           {event.createdBy?.college && (
-            <span className="text-xs text-gray-400 font-medium truncate mr-2">{event.createdBy.college}</span>
+            <span className="text-xs text-gray-400 font-medium truncate mr-2">
+              {event.createdBy.college}
+            </span>
           )}
-          <button className="flex-shrink-0 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 px-3.5 py-1.5 rounded-lg transition-colors flex items-center gap-1">
-            Register <ArrowRight className="w-3 h-3" />
-          </button>
+          {isStudent ? (
+            <button
+              onClick={(e) => { e.stopPropagation(); navigate(`/events/${event._id}`); }}
+              className="flex-shrink-0 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 px-3.5 py-1.5 rounded-lg transition-colors flex items-center gap-1"
+            >
+              Register <ArrowRight className="w-3 h-3" />
+            </button>
+          ) : (
+            <button
+              onClick={(e) => { e.stopPropagation(); navigate(`/events/${event._id}`); }}
+              className="flex-shrink-0 text-xs font-semibold text-gray-600 border border-gray-200 hover:border-blue-600 hover:text-blue-600 px-3.5 py-1.5 rounded-lg transition-colors flex items-center gap-1"
+            >
+              View Details <ArrowRight className="w-3 h-3" />
+            </button>
+          )}
         </div>
       </div>
     </motion.div>

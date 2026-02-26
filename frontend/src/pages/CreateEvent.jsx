@@ -31,7 +31,9 @@ export default function CreateEvent() {
     title: "",
     category: "",
     startDate: "",
+    startTime: "09:00",
     endDate: "",
+    endTime: "18:00",
     location: "",
     description: "",
   });
@@ -76,10 +78,14 @@ export default function CreateEvent() {
     if (!formData.category) newErrors.category = "Please select a category";
     if (!formData.location.trim()) newErrors.location = "Location is required";
     if (!formData.startDate) newErrors.startDate = "Start date is required";
+    if (!formData.startTime) newErrors.startTime = "Start time is required";
     if (!formData.endDate) newErrors.endDate = "End date is required";
-    if (formData.startDate && formData.endDate &&
-      new Date(formData.startDate) > new Date(formData.endDate))
-      newErrors.endDate = "End date must be after start date";
+    if (!formData.endTime) newErrors.endTime = "End time is required";
+    if (formData.startDate && formData.endDate) {
+      const start = new Date(`${formData.startDate}T${formData.startTime || "00:00"}`);
+      const end   = new Date(`${formData.endDate}T${formData.endTime || "00:00"}`);
+      if (start >= end) newErrors.endTime = "End must be after start date & time";
+    }
     if (!formData.description.trim())
       newErrors.description = "Description is required";
     return newErrors;
@@ -99,9 +105,12 @@ export default function CreateEvent() {
       return;
     }
 
-    // Build multipart form data to support image upload
+    // Combine date + time and build multipart form data
     const payload = new FormData();
-    Object.entries(formData).forEach(([key, val]) => payload.append(key, val));
+    const { startDate, startTime, endDate, endTime, ...rest } = formData;
+    payload.append("startDate", new Date(`${startDate}T${startTime}`).toISOString());
+    payload.append("endDate",   new Date(`${endDate}T${endTime}`).toISOString());
+    Object.entries(rest).forEach(([key, val]) => payload.append(key, val));
     if (imageFile) payload.append("image", imageFile);
 
     try {
@@ -234,6 +243,16 @@ export default function CreateEvent() {
                   />
                 </Field>
 
+                <Field label="Start Time" error={errors.startTime}>
+                  <input
+                    type="time"
+                    name="startTime"
+                    value={formData.startTime}
+                    onChange={handleChange}
+                    className={inputCls(errors.startTime)}
+                  />
+                </Field>
+
                 <Field label="End Date" error={errors.endDate}>
                   <input
                     type="date"
@@ -242,6 +261,16 @@ export default function CreateEvent() {
                     onChange={handleChange}
                     min={formData.startDate || new Date().toISOString().split("T")[0]}
                     className={inputCls(errors.endDate)}
+                  />
+                </Field>
+
+                <Field label="End Time" error={errors.endTime}>
+                  <input
+                    type="time"
+                    name="endTime"
+                    value={formData.endTime}
+                    onChange={handleChange}
+                    className={inputCls(errors.endTime)}
                   />
                 </Field>
 

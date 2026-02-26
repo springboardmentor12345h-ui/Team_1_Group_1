@@ -4,6 +4,7 @@ import axios from "axios";
 import { motion } from "framer-motion";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import { useAuth } from "../context/AuthContext";
 import {
   FiArrowLeft,
   FiCalendar,
@@ -21,23 +22,23 @@ import {
 const BASE_URL = "http://localhost:5000";
 
 const CATEGORY_STYLES = {
-  Tech:      { badge: "bg-blue-100 text-blue-700 border-blue-200",     bar: "bg-blue-600",     icon: "💻" },
+  Tech:      { badge: "bg-blue-100 text-blue-700 border-blue-200",      bar: "bg-blue-600",   icon: "💻" },
   Cultural:  { badge: "bg-purple-100 text-purple-700 border-purple-200", bar: "bg-purple-600", icon: "🎭" },
-  Sports:    { badge: "bg-green-100 text-green-700 border-green-200",   bar: "bg-green-600",   icon: "⚽" },
-  Workshop:  { badge: "bg-amber-100 text-amber-700 border-amber-200",   bar: "bg-amber-500",   icon: "🛠️" },
-  Technical: { badge: "bg-blue-100 text-blue-700 border-blue-200",      bar: "bg-blue-600",    icon: "💻" },
+  Sports:    { badge: "bg-green-100 text-green-700 border-green-200",    bar: "bg-green-600",  icon: "⚽" },
+  Workshop:  { badge: "bg-amber-100 text-amber-700 border-amber-200",    bar: "bg-amber-500",  icon: "🛠️" },
+  Technical: { badge: "bg-blue-100 text-blue-700 border-blue-200",       bar: "bg-blue-600",   icon: "💻" },
 };
 
 const STATUS_STYLES = {
-  Upcoming: { cls: "bg-blue-50 text-blue-700 border-blue-200",   dot: "bg-blue-500",   label: "Upcoming" },
-  Ongoing:  { cls: "bg-green-50 text-green-700 border-green-200", dot: "bg-green-500",  label: "Ongoing" },
-  Past:     { cls: "bg-gray-100 text-gray-500 border-gray-200",  dot: "bg-gray-400",   label: "Past" },
+  Upcoming: { cls: "bg-blue-50 text-blue-700 border-blue-200",    dot: "bg-blue-500",  label: "Upcoming" },
+  Ongoing:  { cls: "bg-green-50 text-green-700 border-green-200", dot: "bg-green-500", label: "Ongoing"  },
+  Past:     { cls: "bg-gray-100 text-gray-500 border-gray-200",   dot: "bg-gray-400",  label: "Past"     },
 };
 
 function getStatus(startDate, endDate) {
-  const now = new Date();
+  const now   = new Date();
   const start = new Date(startDate);
-  const end = new Date(endDate);
+  const end   = new Date(endDate);
   if (now < start) return "Upcoming";
   if (now >= start && now <= end) return "Ongoing";
   return "Past";
@@ -56,31 +57,39 @@ function formatDateShort(date) {
 }
 
 function formatTime(date) {
-  return new Date(date).toLocaleTimeString("en-IN", {
-    hour: "2-digit", minute: "2-digit",
+  const d = new Date(date);
+  // Only return a time string if it's not midnight (i.e. time was explicitly set)
+  if (d.getHours() === 0 && d.getMinutes() === 0) return null;
+  return d.toLocaleTimeString("en-IN", {
+    hour: "2-digit", minute: "2-digit", hour12: true,
   });
 }
 
 function daysUntil(startDate) {
-  const now = new Date();
+  const now   = new Date();
   const start = new Date(startDate);
-  const diff = Math.ceil((start - now) / (1000 * 60 * 60 * 24));
-  if (diff < 0) return null;
+  const diff  = Math.ceil((start - now) / (1000 * 60 * 60 * 24));
+  if (diff < 0)  return null;
   if (diff === 0) return "Today";
   if (diff === 1) return "Tomorrow";
   return `In ${diff} days`;
 }
 
+/* ══════════════════════════════════════════════
+   MAIN COMPONENT
+══════════════════════════════════════════════ */
 export default function EventDetail() {
-  const { id } = useParams();
-  const navigate = useNavigate();
+  const { id }       = useParams();
+  const navigate     = useNavigate();
+  const { user }     = useAuth();
+  const isStudent    = !user || user.role === "student";
 
-  const [event, setEvent] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [registered, setRegistered] = useState(false);
-  const [registerLoading, setRegisterLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [event,          setEvent]          = useState(null);
+  const [loading,        setLoading]        = useState(true);
+  const [error,          setError]          = useState(null);
+  const [registered,     setRegistered]     = useState(false);
+  const [registerLoading,setRegisterLoading]= useState(false);
+  const [copied,         setCopied]         = useState(false);
 
   const fetchEvent = async () => {
     try {
@@ -113,7 +122,7 @@ export default function EventDetail() {
 
   const handleRegister = async () => {
     setRegisterLoading(true);
-    // Simulate registration (replace with actual endpoint when available)
+    // Replace with actual registration endpoint when available
     await new Promise((r) => setTimeout(r, 1000));
     setRegisterLoading(false);
     setRegistered(true);
@@ -126,7 +135,6 @@ export default function EventDetail() {
         <Navbar />
         <div className="min-h-screen bg-gray-50 pt-16">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10">
-            {/* Hero skeleton */}
             <div className="rounded-3xl overflow-hidden mb-8 animate-pulse">
               <div className="h-72 sm:h-96 bg-gray-200" />
             </div>
@@ -184,17 +192,21 @@ export default function EventDetail() {
 
   if (!event) return null;
 
-  const cat = CATEGORY_STYLES[event.category] || CATEGORY_STYLES.Tech;
-  const status = getStatus(event.startDate, event.endDate);
+  /* ── Derived values ── */
+  const cat         = CATEGORY_STYLES[event.category] || CATEGORY_STYLES.Tech;
+  const status      = getStatus(event.startDate, event.endDate);
   const statusStyle = STATUS_STYLES[status];
-  const countdown = daysUntil(event.startDate);
+  const countdown   = daysUntil(event.startDate);
+
   const imageUrl = event.image
     ? `${BASE_URL}/${event.image}`
     : `https://placehold.co/1200x600/e8edf7/2563eb?text=${encodeURIComponent(event.title)}`;
 
-  const startFmt = formatDate(event.startDate);
-  const endFmt = formatDate(event.endDate);
-  const isSameDay = formatDateShort(event.startDate) === formatDateShort(event.endDate);
+  const startFmt      = formatDate(event.startDate);
+  const endFmt        = formatDate(event.endDate);
+  const startTimeStr  = formatTime(event.startDate);
+  const endTimeStr    = formatTime(event.endDate);
+  const isSameDay     = formatDateShort(event.startDate) === formatDateShort(event.endDate);
 
   return (
     <>
@@ -215,6 +227,7 @@ export default function EventDetail() {
 
           {/* Overlay content */}
           <div className="absolute inset-0 flex flex-col justify-between p-4 sm:p-8 max-w-5xl mx-auto w-full left-1/2 -translate-x-1/2">
+
             {/* Top bar */}
             <div className="flex items-center justify-between">
               <button
@@ -223,12 +236,14 @@ export default function EventDetail() {
               >
                 <FiArrowLeft size={15} /> Back
               </button>
-
               <button
                 onClick={handleShare}
                 className="flex items-center gap-2 text-white/80 hover:text-white bg-black/20 hover:bg-black/40 backdrop-blur-sm px-3.5 py-2 rounded-lg text-sm font-medium transition-all"
               >
-                {copied ? <><FiCheckCircle size={15} className="text-green-400" /> Copied!</> : <><FiShare2 size={15} /> Share</>}
+                {copied
+                  ? <><FiCheckCircle size={15} className="text-green-400" /> Copied!</>
+                  : <><FiShare2 size={15} /> Share</>
+                }
               </button>
             </div>
 
@@ -245,6 +260,13 @@ export default function EventDetail() {
                 {countdown && status === "Upcoming" && (
                   <span className="text-xs font-semibold px-3 py-1.5 rounded-full bg-white/15 text-white border border-white/20 backdrop-blur-sm">
                     ⏳ {countdown}
+                  </span>
+                )}
+                {/* Time badge on hero */}
+                {startTimeStr && (
+                  <span className="text-xs font-semibold px-3 py-1.5 rounded-full bg-black/40 text-white border border-white/20 backdrop-blur-sm flex items-center gap-1.5">
+                    <FiClock size={11} /> {startTimeStr}
+                    {isSameDay && endTimeStr && endTimeStr !== startTimeStr ? ` – ${endTimeStr}` : ""}
                   </span>
                 )}
               </div>
@@ -296,7 +318,9 @@ export default function EventDetail() {
                   <span className="w-1 h-5 rounded-full bg-blue-600 inline-block" />
                   Date & Time
                 </h2>
+
                 <div className="flex flex-col sm:flex-row gap-4">
+                  {/* Start */}
                   <div className="flex-1 flex items-start gap-3 p-4 bg-blue-50 rounded-xl border border-blue-100">
                     <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center flex-shrink-0">
                       <FiCalendar size={17} />
@@ -306,9 +330,15 @@ export default function EventDetail() {
                         {isSameDay ? "Event Date" : "Start Date"}
                       </p>
                       <p className="text-sm font-semibold text-gray-900">{startFmt}</p>
+                      {startTimeStr && (
+                        <p className="text-xs text-blue-600 font-semibold mt-1 flex items-center gap-1">
+                          <FiClock size={11} /> {startTimeStr}
+                        </p>
+                      )}
                     </div>
                   </div>
 
+                  {/* End (multi-day) */}
                   {!isSameDay && (
                     <div className="flex-1 flex items-start gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
                       <div className="w-10 h-10 rounded-xl bg-gray-600 text-white flex items-center justify-center flex-shrink-0">
@@ -317,6 +347,25 @@ export default function EventDetail() {
                       <div>
                         <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">End Date</p>
                         <p className="text-sm font-semibold text-gray-900">{endFmt}</p>
+                        {endTimeStr && (
+                          <p className="text-xs text-gray-500 font-semibold mt-1 flex items-center gap-1">
+                            <FiClock size={11} /> {endTimeStr}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Same-day end time block */}
+                  {isSameDay && endTimeStr && endTimeStr !== startTimeStr && (
+                    <div className="flex-1 flex items-start gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
+                      <div className="w-10 h-10 rounded-xl bg-gray-500 text-white flex items-center justify-center flex-shrink-0">
+                        <FiClock size={17} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">End Time</p>
+                        <p className="text-sm font-semibold text-gray-900">{endTimeStr}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">Same day</p>
                       </div>
                     </div>
                   )}
@@ -392,35 +441,68 @@ export default function EventDetail() {
                 {/* Status indicator */}
                 <div className={`flex items-center gap-2 mb-4 text-xs font-semibold px-3 py-2 rounded-lg border ${statusStyle.cls}`}>
                   <span className={`w-2 h-2 rounded-full ${statusStyle.dot} animate-pulse`} />
-                  {status === "Upcoming" && countdown ? `${countdown} — Registration Open` : statusStyle.label}
+                  {status === "Upcoming" && countdown
+                    ? `${countdown} — Registration Open`
+                    : statusStyle.label}
                 </div>
 
-                {/* Date summary */}
+                {/* Event summary rows */}
                 <div className="space-y-2.5 mb-5">
-                  <InfoRow icon={<FiCalendar size={13} />} label="Start" value={formatDateShort(event.startDate)} />
+                  {/* Start date + time */}
+                  <InfoRow
+                    icon={<FiCalendar size={13} />}
+                    label="Start"
+                    value={formatDateShort(event.startDate)}
+                    sub={startTimeStr}
+                  />
+                  {/* End date (multi-day) */}
                   {!isSameDay && (
-                    <InfoRow icon={<FiClock size={13} />} label="End" value={formatDateShort(event.endDate)} />
+                    <InfoRow
+                      icon={<FiClock size={13} />}
+                      label="End"
+                      value={formatDateShort(event.endDate)}
+                      sub={endTimeStr}
+                    />
                   )}
-                  <InfoRow icon={<FiMapPin size={13} />} label="Venue" value={event.location} />
-                  <InfoRow icon={<FiTag size={13} />} label="Category" value={event.category} />
+                  {/* End time (same day) */}
+                  {isSameDay && endTimeStr && endTimeStr !== startTimeStr && (
+                    <InfoRow
+                      icon={<FiClock size={13} />}
+                      label="End Time"
+                      value={endTimeStr}
+                    />
+                  )}
+                  <InfoRow icon={<FiMapPin size={13} />} label="Venue"    value={event.location}  />
+                  <InfoRow icon={<FiTag size={13} />}    label="Category" value={event.category}   />
                   {event.createdBy?.college && (
-                    <InfoRow icon={<FiUser size={13} />} label="College" value={event.createdBy.college} />
+                    <InfoRow icon={<FiUser size={13} />} label="College"  value={event.createdBy.college} />
                   )}
                 </div>
 
                 <div className="h-px bg-gray-100 mb-5" />
 
-                {/* Register button */}
+                {/* ── Register / Status / Admin notice ── */}
                 {status === "Past" ? (
                   <div className="text-center py-3 bg-gray-50 rounded-xl border border-gray-100">
                     <p className="text-gray-400 text-sm font-semibold">This event has ended</p>
                   </div>
+
+                ) : !isStudent ? (
+                  /* Admin / college admin sees a neutral notice instead of a register button */
+                  <div className="flex items-start gap-3 py-3 px-4 bg-amber-50 rounded-xl border border-amber-100">
+                    <span className="text-amber-500 mt-0.5 flex-shrink-0">ℹ️</span>
+                    <p className="text-amber-700 text-xs font-medium leading-relaxed">
+                      Registration is for students only. You can manage this event from your dashboard.
+                    </p>
+                  </div>
+
                 ) : registered ? (
                   <div className="flex flex-col items-center gap-2 py-4 bg-green-50 rounded-xl border border-green-100">
                     <FiCheckCircle size={24} className="text-green-600" />
                     <p className="text-green-700 font-bold text-sm">You're registered!</p>
                     <p className="text-green-600/70 text-xs">We'll keep you updated</p>
                   </div>
+
                 ) : (
                   <button
                     onClick={handleRegister}
@@ -438,12 +520,15 @@ export default function EventDetail() {
                   </button>
                 )}
 
-                {/* Share */}
+                {/* Share button */}
                 <button
                   onClick={handleShare}
                   className="w-full mt-3 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:border-blue-600 hover:text-blue-600 font-semibold text-sm transition-all flex items-center justify-center gap-2"
                 >
-                  {copied ? <><FiCheckCircle size={14} className="text-green-500" /> Link Copied!</> : <><FiShare2 size={14} /> Share Event</>}
+                  {copied
+                    ? <><FiCheckCircle size={14} className="text-green-500" /> Link Copied!</>
+                    : <><FiShare2 size={14} /> Share Event</>
+                  }
                 </button>
               </motion.div>
 
@@ -464,14 +549,21 @@ export default function EventDetail() {
   );
 }
 
-/* ── Tiny helpers ── */
-function InfoRow({ icon, label, value }) {
+/* ══════════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════════ */
+function InfoRow({ icon, label, value, sub }) {
   return (
     <div className="flex items-start gap-2.5">
       <span className="text-blue-600 flex-shrink-0 mt-0.5">{icon}</span>
       <div className="min-w-0">
         <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">{label}</span>
         <span className="text-sm font-semibold text-gray-800 truncate block">{value}</span>
+        {sub && (
+          <span className="text-xs text-blue-600 font-semibold flex items-center gap-1 mt-0.5">
+            <FiClock size={10} /> {sub}
+          </span>
+        )}
       </div>
     </div>
   );
