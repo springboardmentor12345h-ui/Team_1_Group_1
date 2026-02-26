@@ -1,0 +1,1133 @@
+openapi: 3.0.3
+info:
+  title: College Events Hub API
+  version: 1.0.0
+  description: |
+    REST API documentation generated from the backend source code.
+
+    Base URL assumes local development server started via `backend/Server.js`.
+servers:
+  - url: http://localhost:5000
+    description: Local development
+
+tags:
+  - name: Auth
+  - name: Events
+  - name: Registrations
+  - name: Feedback
+  - name: Admin Logs
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    EventIdPath:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Event MongoDB ObjectId.
+    EventIdParam:
+      name: eventId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Event MongoDB ObjectId.
+    RegistrationIdPath:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Registration MongoDB ObjectId.
+    UserIdPath:
+      name: userId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: User MongoDB ObjectId.
+
+  schemas:
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required: [message]
+
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required: [message]
+
+    UserPublic:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        college:
+          type: string
+        role:
+          type: string
+          enum: [student, college_admin, super_admin]
+
+    UserPopulated:
+      type: object
+      properties:
+        _id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        college:
+          type: string
+
+    Event:
+      type: object
+      properties:
+        _id:
+          type: string
+        college_id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+          enum: [sports, hackathon, cultural, workshop, other]
+        location:
+          type: string
+        start_date:
+          type: string
+          format: date-time
+        end_date:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        createdBy:
+          oneOf:
+            - type: string
+            - $ref: '#/components/schemas/UserPopulated'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Registration:
+      type: object
+      properties:
+        _id:
+          type: string
+        event_id:
+          oneOf:
+            - type: string
+            - $ref: '#/components/schemas/Event'
+        user_id:
+          oneOf:
+            - type: string
+            - $ref: '#/components/schemas/UserPopulated'
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+        timestamp:
+          type: string
+          format: date-time
+
+    Feedback:
+      type: object
+      properties:
+        _id:
+          type: string
+        event_id:
+          oneOf:
+            - type: string
+            - type: object
+              properties:
+                _id:
+                  type: string
+                title:
+                  type: string
+                category:
+                  type: string
+                start_date:
+                  type: string
+                  format: date-time
+                end_date:
+                  type: string
+                  format: date-time
+        user_id:
+          oneOf:
+            - type: string
+            - type: object
+              properties:
+                _id:
+                  type: string
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                college:
+                  type: string
+        rating:
+          type: number
+          minimum: 1
+          maximum: 5
+        comments:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    AdminLog:
+      type: object
+      properties:
+        _id:
+          type: string
+        action:
+          type: string
+        user_id:
+          oneOf:
+            - type: string
+            - type: object
+              properties:
+                _id:
+                  type: string
+                name:
+                  type: string
+                email:
+                  type: string
+                role:
+                  type: string
+                  enum: [student, college_admin, super_admin]
+        timestamp:
+          type: string
+          format: date-time
+
+    RegisterRequest:
+      type: object
+      required: [name, email, password, college]
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 50
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+        college:
+          type: string
+        role:
+          type: string
+          enum: [student, college_admin, super_admin]
+          default: student
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    CreateEventRequest:
+      type: object
+      required: [college_id, title, description, category, location, start_date, end_date]
+      properties:
+        college_id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+          enum: [sports, hackathon, cultural, workshop, other]
+        location:
+          type: string
+        start_date:
+          type: string
+          format: date-time
+        end_date:
+          type: string
+          format: date-time
+
+    RegisterForEventRequest:
+      type: object
+      required: [event_id]
+      properties:
+        event_id:
+          type: string
+
+    SubmitFeedbackRequest:
+      type: object
+      required: [event_id, rating, comments]
+      properties:
+        event_id:
+          type: string
+        rating:
+          type: number
+          minimum: 1
+          maximum: 5
+        comments:
+          type: string
+
+    CreateAdminLogRequest:
+      type: object
+      required: [action]
+      properties:
+        action:
+          type: string
+
+paths:
+  /api/auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            example:
+              name: Jane Student
+              email: jane@example.edu
+              password: pass1234
+              college: MIT
+              role: student
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  token:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/UserPublic'
+              example:
+                message: User registered successfully
+                token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                user:
+                  id: 65f1abc1234def5678900aaa
+                  name: Jane Student
+                  email: jane@example.edu
+                  college: MIT
+                  role: student
+        '400':
+          description: Validation error or duplicate email
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missing:
+                  value: { message: All required fields must be filled }
+                duplicate:
+                  value: { message: Email already registered }
+
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login and get JWT
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: jane@example.edu
+              password: pass1234
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  token:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/UserPublic'
+              example:
+                message: Login successful
+                token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                user:
+                  id: 65f1abc1234def5678900aaa
+                  name: Jane Student
+                  email: jane@example.edu
+                  college: MIT
+                  role: student
+        '400':
+          description: Missing credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example: { message: Email and password are required }
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example: { message: Invalid email or password }
+
+  /api/auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current authenticated user profile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current user profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPublic'
+              example:
+                id: 65f1abc1234def5678900aaa
+                name: Jane Student
+                email: jane@example.edu
+                college: MIT
+                role: student
+        '401':
+          description: Missing/invalid token or unknown user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missing:
+                  value: { message: Not authorized, token missing }
+                invalid:
+                  value: { message: Not authorized, invalid token }
+        '404':
+          description: Authenticated user no longer exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example: { message: User not found }
+
+  /api/events:
+    get:
+      tags: [Events]
+      summary: Get all events
+      security: []
+      responses:
+        '200':
+          description: List of events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Event'
+    post:
+      tags: [Events]
+      summary: Create event
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEventRequest'
+            example:
+              college_id: MIT-001
+              title: AI Hackathon 2026
+              description: 24-hour hackathon focused on AI for education.
+              category: hackathon
+              location: Main Auditorium
+              start_date: '2026-03-20T09:00:00.000Z'
+              end_date: '2026-03-21T18:00:00.000Z'
+      responses:
+        '201':
+          description: Event created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  event:
+                    $ref: '#/components/schemas/Event'
+        '400':
+          description: Missing required fields / validation failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example: { message: All fields are required }
+        '401':
+          description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Role not allowed (must be college_admin or super_admin)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example: { message: 'Access denied: insufficient role' }
+
+  /api/events/{id}:
+    get:
+      tags: [Events]
+      summary: Get event by ID
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/EventIdPath'
+      responses:
+        '200':
+          description: Event details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+        '404':
+          description: Event not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example: { message: Event not found }
+    put:
+      tags: [Events]
+      summary: Update event
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/EventIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+            example:
+              location: Innovation Center
+              end_date: '2026-03-21T20:00:00.000Z'
+      responses:
+        '200':
+          description: Event updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  event:
+                    $ref: '#/components/schemas/Event'
+        '401':
+          description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Role or ownership denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                role:
+                  value: { message: 'Access denied: insufficient role' }
+                owner:
+                  value: { message: Not authorized to update this event }
+        '404':
+          description: Event not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example: { message: Event not found }
+    delete:
+      tags: [Events]
+      summary: Delete event
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/EventIdPath'
+      responses:
+        '200':
+          description: Event deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example: { message: Event deleted successfully }
+        '401':
+          description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Role or ownership denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                role:
+                  value: { message: 'Access denied: insufficient role' }
+                owner:
+                  value: { message: Not authorized to delete this event }
+        '404':
+          description: Event not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example: { message: Event not found }
+
+  /api/registrations:
+    post:
+      tags: [Registrations]
+      summary: Student registers for an event
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterForEventRequest'
+            example:
+              event_id: 65f2a1b2c3d4e5f67890abcd
+      responses:
+        '201':
+          description: Registration created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  registration:
+                    $ref: '#/components/schemas/Registration'
+              example:
+                message: Registration submitted and pending approval
+                registration:
+                  _id: 65f3b1c2d3e4f5a67890abcd
+                  event_id: 65f2a1b2c3d4e5f67890abcd
+                  user_id: 65f1abc1234def5678900aaa
+                  status: pending
+                  timestamp: '2026-03-01T08:00:00.000Z'
+        '400':
+          description: Missing event_id or duplicate registration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                required:
+                  value: { message: Event ID is required }
+                duplicate:
+                  value: { message: Already registered for this event }
+        '401':
+          description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Only students can register
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example: { message: 'Access denied: insufficient role' }
+        '404':
+          description: Event not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example: { message: Event not found }
+
+  /api/registrations/my:
+    get:
+      tags: [Registrations]
+      summary: Student gets their own registrations
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Registrations list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Registration'
+        '401':
+          description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Only students can access
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example: { message: 'Access denied: insufficient role' }
+
+  /api/registrations/event/{eventId}:
+    get:
+      tags: [Registrations]
+      summary: Admin gets all registrations for one event
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/EventIdParam'
+      responses:
+        '200':
+          description: Event registrations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Registration'
+        '401':
+          description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Role not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example: { message: 'Access denied: insufficient role' }
+
+  /api/registrations/{id}/approve:
+    put:
+      tags: [Registrations]
+      summary: Approve a registration
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/RegistrationIdPath'
+      responses:
+        '200':
+          description: Registration approved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  registration:
+                    $ref: '#/components/schemas/Registration'
+              example:
+                message: Registration approved
+        '401':
+          description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Role not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Registration not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example: { message: Registration not found }
+
+  /api/registrations/{id}/reject:
+    put:
+      tags: [Registrations]
+      summary: Reject a registration
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/RegistrationIdPath'
+      responses:
+        '200':
+          description: Registration rejected
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  registration:
+                    $ref: '#/components/schemas/Registration'
+              example:
+                message: Registration rejected
+        '401':
+          description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Role not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Registration not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example: { message: Registration not found }
+
+  /api/feedback:
+    post:
+      tags: [Feedback]
+      summary: Student submits event feedback
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitFeedbackRequest'
+            example:
+              event_id: 65f2a1b2c3d4e5f67890abcd
+              rating: 5
+              comments: Great organization and sessions.
+      responses:
+        '201':
+          description: Feedback submitted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  feedback:
+                    $ref: '#/components/schemas/Feedback'
+              example:
+                message: Feedback submitted successfully
+        '400':
+          description: Missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example: { message: All fields are required }
+        '401':
+          description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Only students can submit feedback
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Event not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example: { message: Event not found }
+
+  /api/feedback/my:
+    get:
+      tags: [Feedback]
+      summary: Student gets own feedback history
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Feedback list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Feedback'
+        '401':
+          description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Only students can access
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/feedback/event/{eventId}:
+    get:
+      tags: [Feedback]
+      summary: Admin gets all feedback for an event
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/EventIdParam'
+      responses:
+        '200':
+          description: Feedback list for event
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Feedback'
+        '401':
+          description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Role not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/feedback/event/{eventId}/average:
+    get:
+      tags: [Feedback]
+      summary: Admin gets average rating for an event
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/EventIdParam'
+      responses:
+        '200':
+          description: Average rating and total feedback count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  event_id:
+                    type: string
+                  averageRating:
+                    type: number
+                  totalFeedback:
+                    type: integer
+              example:
+                event_id: 65f2a1b2c3d4e5f67890abcd
+                averageRating: 4.5
+                totalFeedback: 12
+        '401':
+          description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Role not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: No feedback found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example: { message: No feedback found for this event }
+
+  /api/admin-logs:
+    get:
+      tags: [Admin Logs]
+      summary: Super admin gets all logs
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Admin logs list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminLog'
+        '401':
+          description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Only super_admin allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example: { message: 'Access denied: insufficient role' }
+    post:
+      tags: [Admin Logs]
+      summary: Create a manual admin log entry
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAdminLogRequest'
+            example:
+              action: Approved extra seats for event AI Hackathon 2026
+      responses:
+        '201':
+          description: Log created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  log:
+                    $ref: '#/components/schemas/AdminLog'
+              example:
+                message: Admin log created
+        '400':
+          description: Missing action
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example: { message: Action is required }
+        '401':
+          description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Role not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/admin-logs/me:
+    get:
+      tags: [Admin Logs]
+      summary: Get logs of currently authenticated admin
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current admin logs list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminLog'
+        '401':
+          description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Role not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/admin-logs/user/{userId}:
+    get:
+      tags: [Admin Logs]
+      summary: Super admin gets logs for a specific admin user
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/UserIdPath'
+      responses:
+        '200':
+          description: Logs by admin user id
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminLog'
+        '401':
+          description: Missing/invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Only super_admin allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

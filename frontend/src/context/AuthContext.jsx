@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { getMe } from "../services/api";
+import API from "../api/axios";
 
 const AuthContext = createContext();
 
@@ -7,40 +7,57 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // 🔹 Fetch logged-in user on app load
+  // check logged-in user on app start
   useEffect(() => {
-    const fetchUser = async () => {
+    const fetchMe = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+
       try {
-        const res = await getMe();
+        const res = await API.get("/auth/me");
         setUser(res.data);
-      } catch (err) {
-        setUser(null);
+      } catch {
+        localStorage.removeItem("token");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchUser();
+    fetchMe();
   }, []);
 
-  // 🔹 Login handler
-  const login = (token, userData) => {
-    localStorage.setItem("token", token);
-    setUser(userData);
+  // login
+const login = async (email, password) => {
+  const res = await API.post("/auth/login", { email, password });
+
+  localStorage.setItem("token", res.data.token);
+  setUser(res.data.user);
+
+  return res.data.user; // ⭐ VERY IMPORTANT
+};
+
+
+  // register
+  const register = async (data) => {
+    const res = await API.post("/auth/register", data);
+    localStorage.setItem("token", res.data.token);
+    setUser(res.data.user);
   };
 
-  // 🔹 Logout handler
+  // logout
   const logout = () => {
     localStorage.removeItem("token");
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-// Custom hook
 export const useAuth = () => useContext(AuthContext);
