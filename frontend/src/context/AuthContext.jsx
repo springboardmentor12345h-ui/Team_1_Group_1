@@ -45,6 +45,7 @@ const login = async (email, password) => {
     const res = await API.post("/auth/register", data);
     localStorage.setItem("token", res.data.token);
     setUser(res.data.user);
+    return res.data.user;
   };
 
   // logout

@@ -1,7 +1,7 @@
 import authRoutes from "./routes/authRoutes.js";
 import express from 'express';
 import cors from 'cors';
-import { configDotenv } from 'dotenv';
+import dotenv from 'dotenv';
 import connectDB from './config/db.js';
 import eventRoutes from "./routes/eventRoutes.js";
 import registrationRoutes from "./routes/registrationRoutes.js";
@@ -9,7 +9,7 @@ import feedbackRoutes from "./routes/feedbackRoutes.js";
 import adminLogRoutes from "./routes/adminLogRoutes.js";
 
 
-configDotenv();
+dotenv.config();
 connectDB();
 const app = express();
 app.use(express.json());
