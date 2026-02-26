@@ -57,6 +57,18 @@ function formatDate(date) {
   });
 }
 
+function formatTime(date) {
+  return new Date(date).toLocaleTimeString("en-IN", {
+    hour: "2-digit", minute: "2-digit", hour12: true,
+  });
+}
+
+function hasTime(dateStr) {
+  // Returns true if the stored date has a non-midnight time
+  const d = new Date(dateStr);
+  return d.getHours() !== 0 || d.getMinutes() !== 0;
+}
+
 function getEventStatus(startDate, endDate) {
   const now = new Date();
   const start = new Date(startDate);
@@ -209,15 +221,17 @@ function EventManagement() {
     }
   };
 
-  const filtered = events.filter((ev) => {
-    const matchSearch =
-      ev.title.toLowerCase().includes(search.toLowerCase()) ||
-      ev.location?.toLowerCase().includes(search.toLowerCase());
-    const matchCategory = categoryFilter === "All" || ev.category === categoryFilter;
-    const status = getEventStatus(ev.startDate, ev.endDate);
-    const matchStatus = statusFilter === "All" || status === statusFilter;
-    return matchSearch && matchCategory && matchStatus;
-  });
+  const filtered = events
+    .filter((ev) => {
+      const matchSearch =
+        ev.title.toLowerCase().includes(search.toLowerCase()) ||
+        ev.location?.toLowerCase().includes(search.toLowerCase());
+      const matchCategory = categoryFilter === "All" || ev.category === categoryFilter;
+      const status = getEventStatus(ev.startDate, ev.endDate);
+      const matchStatus = statusFilter === "All" || status === statusFilter;
+      return matchSearch && matchCategory && matchStatus;
+    })
+    .sort((a, b) => new Date(b.startDate) - new Date(a.startDate)); // latest first
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / EVENTS_PER_PAGE));
   const paginated = filtered.slice(
@@ -364,10 +378,8 @@ function EventManagement() {
         <EditEventModal
           event={editTarget}
           onClose={() => setEditTarget(null)}
-          onUpdated={(updatedEvent) => {
-            setEvents((prev) =>
-              prev.map((e) => (e._id === updatedEvent._id ? updatedEvent : e))
-            );
+          onUpdated={() => {
+            fetchEvents(); // refetch so createdBy is fully populated
             setEditTarget(null);
           }}
         />
@@ -377,8 +389,8 @@ function EventManagement() {
       {showCreate && (
         <CreateEventModal
           onClose={() => setShowCreate(false)}
-          onCreated={(newEvent) => {
-            setEvents((prev) => [newEvent, ...prev]);
+          onCreated={() => {
+            fetchEvents(); // refetch so createdBy is fully populated
             setShowCreate(false);
           }}
         />
@@ -397,7 +409,9 @@ function CreateEventModal({ onClose, onCreated }) {
     title: "",
     category: "",
     startDate: "",
+    startTime: "09:00",
     endDate: "",
+    endTime: "18:00",
     location: "",
     description: "",
   });
@@ -446,10 +460,14 @@ function CreateEventModal({ onClose, onCreated }) {
     if (!formData.category) e.category = "Please select a category";
     if (!formData.location.trim()) e.location = "Location is required";
     if (!formData.startDate) e.startDate = "Start date is required";
+    if (!formData.startTime) e.startTime = "Start time is required";
     if (!formData.endDate) e.endDate = "End date is required";
-    if (formData.startDate && formData.endDate &&
-      new Date(formData.startDate) > new Date(formData.endDate))
-      e.endDate = "End date must be after start date";
+    if (!formData.endTime) e.endTime = "End time is required";
+    if (formData.startDate && formData.endDate) {
+      const start = new Date(`${formData.startDate}T${formData.startTime || "00:00"}`);
+      const end   = new Date(`${formData.endDate}T${formData.endTime || "00:00"}`);
+      if (start >= end) e.endTime = "End must be after start date & time";
+    }
     if (!formData.description.trim()) e.description = "Description is required";
     return e;
   };
@@ -465,8 +483,12 @@ function CreateEventModal({ onClose, onCreated }) {
     const token = localStorage.getItem("token");
     if (!token) { setApiError("Unauthorized. Please login again."); return; }
 
+    // Combine date + time into ISO datetime strings
     const payload = new FormData();
-    Object.entries(formData).forEach(([key, val]) => payload.append(key, val));
+    const { startDate, startTime, endDate, endTime, ...rest } = formData;
+    payload.append("startDate", new Date(`${startDate}T${startTime}`).toISOString());
+    payload.append("endDate",   new Date(`${endDate}T${endTime}`).toISOString());
+    Object.entries(rest).forEach(([key, val]) => payload.append(key, val));
     if (imageFile) payload.append("image", imageFile);
 
     try {
@@ -571,6 +593,7 @@ function CreateEventModal({ onClose, onCreated }) {
                 {/* Date & Location */}
                 <ModalSection icon={<FiCalendar size={14} />} title="Date & Location">
                   <div className="grid grid-cols-2 gap-4">
+                    {/* Start Date + Time */}
                     <Field label="Start Date" error={errors.startDate}>
                       <input
                         type="date"
@@ -581,6 +604,16 @@ function CreateEventModal({ onClose, onCreated }) {
                         className={inputCls(errors.startDate)}
                       />
                     </Field>
+                    <Field label="Start Time" error={errors.startTime}>
+                      <input
+                        type="time"
+                        name="startTime"
+                        value={formData.startTime}
+                        onChange={handleChange}
+                        className={inputCls(errors.startTime)}
+                      />
+                    </Field>
+                    {/* End Date + Time */}
                     <Field label="End Date" error={errors.endDate}>
                       <input
                         type="date"
@@ -589,6 +622,15 @@ function CreateEventModal({ onClose, onCreated }) {
                         onChange={handleChange}
                         min={formData.startDate || new Date().toISOString().split("T")[0]}
                         className={inputCls(errors.endDate)}
+                      />
+                    </Field>
+                    <Field label="End Time" error={errors.endTime}>
+                      <input
+                        type="time"
+                        name="endTime"
+                        value={formData.endTime}
+                        onChange={handleChange}
+                        className={inputCls(errors.endTime)}
                       />
                     </Field>
                     <div className="col-span-2">
@@ -736,11 +778,19 @@ function EditEventModal({ event, onClose, onUpdated }) {
   const toDateInput = (dateStr) =>
     dateStr ? new Date(dateStr).toISOString().split("T")[0] : "";
 
+  const toTimeInput = (dateStr) => {
+    if (!dateStr) return "09:00";
+    const d = new Date(dateStr);
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  };
+
   const [formData, setFormData] = useState({
     title: event.title || "",
     category: event.category || "",
     startDate: toDateInput(event.startDate),
+    startTime: toTimeInput(event.startDate),
     endDate: toDateInput(event.endDate),
+    endTime: toTimeInput(event.endDate),
     location: event.location || "",
     description: event.description || "",
   });
@@ -791,10 +841,14 @@ function EditEventModal({ event, onClose, onUpdated }) {
     if (!formData.category) e.category = "Please select a category";
     if (!formData.location.trim()) e.location = "Location is required";
     if (!formData.startDate) e.startDate = "Start date is required";
+    if (!formData.startTime) e.startTime = "Start time is required";
     if (!formData.endDate) e.endDate = "End date is required";
-    if (formData.startDate && formData.endDate &&
-      new Date(formData.startDate) > new Date(formData.endDate))
-      e.endDate = "End date must be after start date";
+    if (!formData.endTime) e.endTime = "End time is required";
+    if (formData.startDate && formData.endDate) {
+      const start = new Date(`${formData.startDate}T${formData.startTime || "00:00"}`);
+      const end   = new Date(`${formData.endDate}T${formData.endTime || "00:00"}`);
+      if (start >= end) e.endTime = "End must be after start date & time";
+    }
     if (!formData.description.trim()) e.description = "Description is required";
     return e;
   };
@@ -810,8 +864,12 @@ function EditEventModal({ event, onClose, onUpdated }) {
     const token = localStorage.getItem("token");
     if (!token) { setApiError("Unauthorized. Please login again."); return; }
 
+    // Combine date + time into ISO datetime strings
     const payload = new FormData();
-    Object.entries(formData).forEach(([key, val]) => payload.append(key, val));
+    const { startDate, startTime, endDate, endTime, ...rest } = formData;
+    payload.append("startDate", new Date(`${startDate}T${startTime}`).toISOString());
+    payload.append("endDate",   new Date(`${endDate}T${endTime}`).toISOString());
+    Object.entries(rest).forEach(([key, val]) => payload.append(key, val));
     if (imageFile) payload.append("image", imageFile);
 
     try {
@@ -931,6 +989,15 @@ function EditEventModal({ event, onClose, onUpdated }) {
                         className={inputCls(errors.startDate)}
                       />
                     </Field>
+                    <Field label="Start Time" error={errors.startTime}>
+                      <input
+                        type="time"
+                        name="startTime"
+                        value={formData.startTime}
+                        onChange={handleChange}
+                        className={inputCls(errors.startTime)}
+                      />
+                    </Field>
                     <Field label="End Date" error={errors.endDate}>
                       <input
                         type="date"
@@ -939,6 +1006,15 @@ function EditEventModal({ event, onClose, onUpdated }) {
                         onChange={handleChange}
                         min={formData.startDate}
                         className={inputCls(errors.endDate)}
+                      />
+                    </Field>
+                    <Field label="End Time" error={errors.endTime}>
+                      <input
+                        type="time"
+                        name="endTime"
+                        value={formData.endTime}
+                        onChange={handleChange}
+                        className={inputCls(errors.endTime)}
                       />
                     </Field>
                     <div className="col-span-2">
@@ -1094,8 +1170,20 @@ function AdminEventCard({ event, onEdit, onDelete }) {
         <div className="space-y-1.5 text-xs text-gray-500 border-t border-gray-100 pt-3 mb-3">
           <div className="flex items-center gap-2">
             <FiCalendar size={12} className="flex-shrink-0 text-gray-400" />
-            <span>{formatDate(event.startDate)}
-              {formatDate(event.startDate) !== formatDate(event.endDate) && ` – ${formatDate(event.endDate)}`}
+            <span>
+              {formatDate(event.startDate)}
+              {hasTime(event.startDate) && (
+                <span className="text-blue-500 ml-1">{formatTime(event.startDate)}</span>
+              )}
+              {formatDate(event.startDate) !== formatDate(event.endDate) && (
+                <>
+                  {" – "}
+                  {formatDate(event.endDate)}
+                  {hasTime(event.endDate) && (
+                    <span className="text-blue-500 ml-1">{formatTime(event.endDate)}</span>
+                  )}
+                </>
+              )}
             </span>
           </div>
           <div className="flex items-center gap-2">
