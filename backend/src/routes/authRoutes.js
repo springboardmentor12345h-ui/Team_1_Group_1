@@ -18,6 +18,8 @@ router.post("/register", registerUser);
 
 // Login
 router.post("/login", loginUser);
+router.post("/forgot-password", forgotPassword);
+router.put("/reset-password/:token", resetPassword);
 
 // Get logged-in user
 router.get("/me", verifyToken, getMe);
