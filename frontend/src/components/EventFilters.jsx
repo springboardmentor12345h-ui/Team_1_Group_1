@@ -71,10 +71,10 @@ export default function EventFilters({
     <div className="sticky top-16 z-30 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm">
 
       {/* ── Row 1: categories + controls ── */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-3 pb-2 flex items-center gap-3">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-3 pb-2 flex items-center flex-wrap gap-2 sm:gap-3">
 
         {/* Category pills */}
-        <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide flex-1">
+        <div className="flex items-center gap-2 overflow-x-auto w-full sm:flex-1" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
           {CATEGORIES.map((cat) => {
             const styles = CAT_STYLES[cat];
             const isActive = activeCategory === cat;
@@ -173,14 +173,14 @@ export default function EventFilters({
 
       {/* ── Row 2: advanced filters (collapsible) ── */}
       {showAdvanced && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-3 flex flex-wrap items-end gap-4 border-t border-gray-100 pt-3">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-3 flex flex-wrap items-end gap-3 sm:gap-4 border-t border-gray-100 pt-3">
 
           {/* Status filter */}
           <div className="flex flex-col gap-1">
             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
               Status
             </label>
-            <div className="flex gap-1.5">
+            <div className="flex flex-wrap gap-1.5">
               {["All", "Upcoming", "Ongoing", "Past"].map((s) => (
                 <button
                   key={s}
@@ -202,14 +202,14 @@ export default function EventFilters({
             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
               <FiClock size={10} /> Start Time Range
             </label>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <div className="flex flex-col gap-0.5">
                 <span className="text-[10px] text-gray-400">From</span>
                 <input
                   type="time"
                   value={timeFrom}
                   onChange={(e) => setTimeFrom(e.target.value)}
-                  className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg outline-none focus:border-blue-600 bg-white text-gray-700 cursor-pointer w-32"
+                  className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg outline-none focus:border-blue-600 bg-white text-gray-700 cursor-pointer w-full sm:w-32"
                 />
               </div>
               <span className="text-gray-300 text-sm mt-4">–</span>
@@ -220,7 +220,7 @@ export default function EventFilters({
                   value={timeTo}
                   min={timeFrom}
                   onChange={(e) => setTimeTo(e.target.value)}
-                  className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg outline-none focus:border-blue-600 bg-white text-gray-700 cursor-pointer w-32"
+                  className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg outline-none focus:border-blue-600 bg-white text-gray-700 cursor-pointer w-full sm:w-32"
                 />
               </div>
               {(timeFrom || timeTo) && (
