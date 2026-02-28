@@ -19,6 +19,8 @@ const userSchema = new mongoose.Schema(
       required: [true, "Password is required"],
       select: false,
     },
+    resetPasswordToken: String,
+    resetPasswordExpire: Date,
     role: {
       type: String,
       enum: ["student", "college_admin", "super_admin"],
