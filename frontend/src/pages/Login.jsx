@@ -49,7 +49,6 @@ export default function Login() {
   return (
     <div className="min-h-screen flex justify-center items-center px-4">
       
-      {/* Same width as Register */}
       <div className="w-[420px] max-w-full bg-indigo-200 p-[28px] sm:p-[30px] rounded-[14px] shadow-[0_12px_30px_rgba(0,0,0,0.08)]">
 
         {/* Icon */}
@@ -100,6 +99,16 @@ export default function Login() {
           </button>
         </div>
 
+        {/* Forgot Password */}
+        <div className="flex justify-end mt-[6px]">
+          <span
+            onClick={() => navigate("/forgot-password")}
+            className="text-[12px] text-[#1F3C88] cursor-pointer hover:underline"
+          >
+            Forgot Password?
+          </span>
+        </div>
+
         {/* Login Button */}
         <button
           onClick={handleLogin}
@@ -113,11 +122,12 @@ export default function Login() {
           {loading ? "Logging in..." : "Login"}
         </button>
 
+        {/* Register */}
         <p className="mt-[14px] text-center text-[12px]">
           Don't have an account?{" "}
           <span
             onClick={() => navigate("/register")}
-            className="text-[#1F3C88] font-medium cursor-pointer"
+            className="text-[#1F3C88] font-medium cursor-pointer hover:underline"
           >
             Register
           </span>

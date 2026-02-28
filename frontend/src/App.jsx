@@ -11,6 +11,8 @@ import Chatbot from "./components/Chatbot";
 import Events from "./pages/Events";
 import EventDetail from "./pages/EventDetail";
 import Profile from "./pages/Profile";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 
 function App() {
   return (
@@ -28,6 +30,8 @@ function App() {
         <Route path="/events" element={<Events />} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/events/:id" element={<EventDetail />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
 
         {/* Student Dashboard */}
         <Route
