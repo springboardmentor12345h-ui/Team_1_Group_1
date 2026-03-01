@@ -32,6 +32,10 @@ const userSchema = new mongoose.Schema(
         return this.role === "college_admin";
       },
     },
+    profileImage: {
+      type: String,
+      default: "",
+    },
     // 🔐 Approval system
     status: {
       type: String,

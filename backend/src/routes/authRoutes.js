@@ -1,4 +1,8 @@
 import express from "express";
+import upload from "../middleware/upload.js";
+import { updateProfile } from "../controllers/authController.js";
+import { protect } from "../middleware/authmiddleware.js";
+import { changePassword } from "../controllers/authController.js";
 import {
   registerUser,
   loginUser,
@@ -29,5 +33,8 @@ router.put("/reset-password/:token", resetPassword);
 
 // Get logged-in user
 router.get("/me", verifyToken, getMe);
+router.put("/update-profile", protect, upload.single("profileImage"), updateProfile);
+router.put("/change-password", protect, changePassword);
+router.delete("/delete-account", protect, deleteAccount);
 
 export default router;
