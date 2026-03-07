@@ -1,27 +1,40 @@
-// models/Registration.js
+import mongoose from "mongoose";
 
-const mongoose = require("mongoose");
+const registrationSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
 
-const registrationSchema = new mongoose.Schema({
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    required: true
+    eventId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Event",
+      required: true,
+      index: true,
+    },
+
+    status: {
+      type: String,
+      enum: ["pending", "approved", "rejected"],
+      default: "pending",
+    },
+
+    approvedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
   },
-  eventId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Event",
-    required: true
-  },
-  status: {
-    type: String,
-    enum: ["pending", "approved", "rejected"],
-    default: "pending"
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
+  {
+    timestamps: true,
   }
-});
+);
 
-module.exports = mongoose.model("Registration", registrationSchema);
+registrationSchema.index({ userId: 1, eventId: 1 }, { unique: true });
+
+const Registration = mongoose.model("Registration", registrationSchema);
+
+export default Registration;
