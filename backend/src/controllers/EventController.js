@@ -1,7 +1,4 @@
 import Event from "../models/Event.js";
-import User from "../models/User.js";                                              // 🔔 NEW
-import { createAndSendNotification } from "./notificationController.js";           // 🔔 NEW
-import { sendToAll } from "../services/sseManager.js";                             // 🔔 NEW
 
 /* ===============================
    CREATE EVENT
@@ -64,29 +61,6 @@ export const createEvent = async (req, res) => {
       message: "Event created successfully",
       event,
     });
-
-    // 🔔 in-app + browser push only (no email for event created)
-    try {
-      const students = await User.find({ role: "student", status: "approved" }).select("_id");
-      const BATCH_SIZE = 50;
-      for (let i = 0; i < students.length; i += BATCH_SIZE) {
-        const batch = students.slice(i, i + BATCH_SIZE);
-        await Promise.all(
-          batch.map((student) =>
-            createAndSendNotification({
-              userId: student._id,
-              title: `New Event: ${titleClean} 🎉`,
-              message: `A new ${categoryClean} event has been posted. Check it out!`,
-              type: "event_created",
-              link: `/events/${event._id}`,
-            })
-          )
-        );
-      }
-      sendToAll({ type: "event_created", event: { _id: event._id, title: titleClean } });
-    } catch (notifError) {
-      console.error("⚠️ Notification error (non-blocking):", notifError.message);
-    }
 
   } catch (error) {
     res.status(500).json({
@@ -199,30 +173,6 @@ export const updateEvent = async (req, res) => {
 
     res.status(200).json(updatedEvent);
 
-    // 🔔 in-app only (no email, no browser push for event updated)
-    try {
-      const eventTitle = titleClean || event.title;
-      const students = await User.find({ role: "student", status: "approved" }).select("_id");
-      const BATCH_SIZE = 50;
-      for (let i = 0; i < students.length; i += BATCH_SIZE) {
-        const batch = students.slice(i, i + BATCH_SIZE);
-        await Promise.all(
-          batch.map((student) =>
-            createAndSendNotification({
-              userId: student._id,
-              title: `Event Updated: ${eventTitle} ✏️`,
-              message: "An event has been updated. Check the latest details.",
-              type: "event_updated",
-              link: `/events/${req.params.id}`,
-            })
-          )
-        );
-      }
-      sendToAll({ type: "event_updated", event: { _id: req.params.id, title: eventTitle } });
-    } catch (notifError) {
-      console.error("⚠️ Notification error (non-blocking):", notifError.message);
-    }
-
   } catch (error) {
     res.status(500).json({
       message: "Failed to update event",
@@ -250,36 +200,11 @@ export const deleteEvent = async (req, res) => {
       return res.status(403).json({ message: "Not authorized" });
     }
 
-    const eventTitle = event.title; // 🔔 NEW — save title before deleting
-
     await event.deleteOne();
 
     res.status(200).json({
       message: "Event deleted successfully",
     });
-
-    // 🔔 in-app + browser push only (no email for event deleted)
-    try {
-      const students = await User.find({ role: "student", status: "approved" }).select("_id");
-      const BATCH_SIZE = 50;
-      for (let i = 0; i < students.length; i += BATCH_SIZE) {
-        const batch = students.slice(i, i + BATCH_SIZE);
-        await Promise.all(
-          batch.map((student) =>
-            createAndSendNotification({
-              userId: student._id,
-              title: `Event Cancelled: ${eventTitle} 🗑️`,
-              message: "An event you may have been interested in has been cancelled.",
-              type: "event_deleted",
-              link: "/events",
-            })
-          )
-        );
-      }
-      sendToAll({ type: "event_deleted", event: { title: eventTitle } });
-    } catch (notifError) {
-      console.error("⚠️ Notification error (non-blocking):", notifError.message);
-    }
 
   } catch (error) {
     res.status(500).json({

@@ -4,7 +4,6 @@ import {
   markNotificationRead,
   markAllNotificationsRead,
   deleteNotificationById,
-  setupBrowserPush,
 } from "../services/notificationService";
 import { BASE_URL } from "../services/api";
 
@@ -82,12 +81,6 @@ export const useNotifications = (user) => {
     eventSourceRef.current = es;
   }, [user]);
 
-  // ── Browser Push Setup ─────────────────────────────────────
-  const enableBrowserPush = useCallback(async () => {
-    if (!user) return false;
-    return await setupBrowserPush();
-  }, [user]);
-
   // ── Mark Single as Read ────────────────────────────────────
   const markRead = useCallback(async (id) => {
     try {
@@ -149,7 +142,6 @@ export const useNotifications = (user) => {
     markRead,
     markAllRead,
     deleteOne,
-    enableBrowserPush,
     reload: loadNotifications,
   };
 };

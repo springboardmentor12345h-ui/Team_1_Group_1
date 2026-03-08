@@ -1,7 +1,6 @@
 import Notification from "../models/Notification.js";
 import User from "../models/User.js";
 import { addClient, removeClient, sendToUser } from "../services/sseManager.js";
-import { sendPushNotification, getVapidPublicKey } from "../services/webPushService.js";
 
 /*
 ========================================
@@ -132,44 +131,6 @@ export const deleteNotification = async (req, res) => {
 
 /*
 ========================================
-🌐 VAPID PUBLIC KEY
-GET /api/notifications/vapid-public-key
-Frontend needs this to subscribe to push.
-========================================
-*/
-export const vapidPublicKey = (req, res) => {
-  const key = getVapidPublicKey();
-  if (!key) {
-    return res.status(500).json({ message: "VAPID key not configured" });
-  }
-  res.status(200).json({ vapidPublicKey: key });
-};
-
-/*
-========================================
-💾 SAVE PUSH SUBSCRIPTION
-POST /api/notifications/subscribe
-Frontend sends its push subscription object
-after user grants browser permission.
-========================================
-*/
-export const savePushSubscription = async (req, res) => {
-  try {
-    const { subscription } = req.body;
-    if (!subscription) {
-      return res.status(400).json({ message: "Subscription object required" });
-    }
-
-    await User.findByIdAndUpdate(req.user._id, { pushSubscription: subscription });
-
-    res.status(200).json({ message: "Push subscription saved" });
-  } catch (error) {
-    res.status(500).json({ message: "Failed to save push subscription" });
-  }
-};
-
-/*
-========================================
 🔧 INTERNAL HELPER
 createAndSendNotification({ userId, title, message, type, link })
 
@@ -203,19 +164,6 @@ export const createAndSendNotification = async ({
       type: "notification",
       notification,
     });
-
-    // 3. Browser push (if user has a subscription)
-    const user = await User.findById(userId).select("pushSubscription");
-    if (user?.pushSubscription) {
-      try {
-        await sendPushNotification(user.pushSubscription, { title, message, link });
-      } catch (pushError) {
-        // Subscription expired — clear it from DB
-        if (pushError.statusCode === 410) {
-          await User.findByIdAndUpdate(userId, { $unset: { pushSubscription: 1 } });
-        }
-      }
-    }
 
     return notification;
   } catch (error) {

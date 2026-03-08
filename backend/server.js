@@ -6,7 +6,7 @@ import adminRoutes from "./src/routes/adminRoutes.js";
 import connectDB from "./src/config/db.js";
 import authRoutes from "./src/routes/authRoutes.js";
 import chatRoutes from "./src/routes/chatRoutes.js";
-import eventRoutes from "./src/routes/eventRoutes.js";
+import eventRoutes from "./src/routes/EventRoutes.js";
 import userRoutes from "./src/routes/userRoutes.js";
 import notificationRoutes from "./src/routes/notificationRoutes.js";
 

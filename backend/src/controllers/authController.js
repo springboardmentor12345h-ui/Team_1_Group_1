@@ -206,7 +206,7 @@ export const approveCollegeAdmin = async (req, res) => {
         title: "Account Approved ✅",
         message: "Your college admin account has been approved. You can now log in.",
         type: "admin_approved",
-        link: "/login",
+        link: "/dashboard/collegeadmin", 
       });
       const template = emailTemplates.adminApproved(admin.name);
       await sendEmail({ to: admin.email, ...template });
