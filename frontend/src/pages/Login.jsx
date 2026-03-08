@@ -6,6 +6,7 @@ import { ArrowRight, Calendar, Users, Star, Zap } from "lucide-react";
 import { loginUser } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
+import { setupBrowserPush } from "../services/notificationService"; // 🔔 NEW
 
 export default function Login() {
   const navigate = useNavigate();
@@ -24,6 +25,7 @@ export default function Login() {
       const { token, user } = res.data;
       login(token, user);
       toast.success("Login successful");
+      setupBrowserPush(); // 🔔 NEW — ask for browser push permission (non-blocking)
       // if (user.role === "student") navigate("/dashboard/student");
       // else if (user.role === "college_admin") navigate("/dashboard/collegeadmin");
       // else if (user.role === "super_admin") navigate("/dashboard/superadmin");

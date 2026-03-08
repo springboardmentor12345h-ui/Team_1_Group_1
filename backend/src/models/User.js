@@ -43,6 +43,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    pushSubscription: {
+  type: Object,
+  default: null,
+},
 
     // 🔐 Approval system
     status: {
