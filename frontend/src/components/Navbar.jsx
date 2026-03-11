@@ -11,7 +11,9 @@ import {
   FiX,
 } from "react-icons/fi";
 import { useAuth } from "../context/AuthContext";
+import { BASE_URL } from "../services/api";
 import toast from "react-hot-toast";
+import NotificationBell from "./NotificationBell"; // 🔔 NEW
 
 const BASE_URL = "http://localhost:5000";
 
@@ -46,8 +48,13 @@ export default function Navbar({ toggleSidebar, setSidebarOpen }) {
   }[role] || "bg-gray-400";
 
   useEffect(() => {
+<<<<<<< HEAD
     setImgError(false);
   }, [user?.profileImage]);
+=======
+  setImgError(false);
+}, [user?.id]);
+>>>>>>> fa7d4b60bc871122a25387589696ab1194809c05
 
   const avatarSrc =
     user?.profileImage && !imgError
@@ -172,8 +179,19 @@ export default function Navbar({ toggleSidebar, setSidebarOpen }) {
             </button>
           </>
         ) : (
+<<<<<<< HEAD
           /* ── Authenticated dropdown trigger ── */
           <div ref={dropdownRef} className="relative">
+=======
+          /* ── Authenticated ── */
+          <div className="flex items-center gap-2">
+
+            {/* 🔔 Notification Bell */}
+            <NotificationBell user={user} />
+
+            {/* ── Avatar dropdown trigger ── */}
+            <div ref={dropdownRef} className="relative">
+>>>>>>> fa7d4b60bc871122a25387589696ab1194809c05
             <button
               onClick={() => setOpen(!open)}
               className={`flex items-center gap-2.5 pl-1.5 pr-3 py-1.5 rounded-full border transition-all duration-150
@@ -261,7 +279,8 @@ export default function Navbar({ toggleSidebar, setSidebarOpen }) {
                 </div>
               </div>
             )}
-          </div>
+          </div> {/* closes dropdownRef */}
+          </div> 
         )}
       </div>
 

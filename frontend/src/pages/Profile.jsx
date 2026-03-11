@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -10,6 +11,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import Navbar from "../components/Navbar";
+=======
+import { useState, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import Navbar from "../components/Navbar";
+>>>>>>> fa7d4b60bc871122a25387589696ab1194809c05
 import PhoneInput, { isValidPhoneNumber } from "react-phone-number-input";
 import "react-phone-number-input/style.css";
 import {
@@ -29,6 +37,7 @@ import {
 } from "react-icons/fi";
 >>>>>>> 200716d (Implement profile management (update, password change, delete account) with phone support and userController separation)
 import toast from "react-hot-toast";
+<<<<<<< HEAD
 import { updateProfile, deleteAccount } from "../services/api";
 
 <<<<<<< HEAD
@@ -150,6 +159,17 @@ const fadeUp = (delay = 0) => ({
 
 const BASE_URL = "http://localhost:5000";
 
+=======
+import { updateProfile, deleteAccount, BASE_URL } from "../services/api";
+
+const fadeUp = (delay = 0) => ({
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.45, delay, ease: [0.22, 1, 0.36, 1] },
+});
+
+
+>>>>>>> fa7d4b60bc871122a25387589696ab1194809c05
 export default function Profile() {
   const { user, logout, setUser } = useAuth();
   const navigate = useNavigate();
@@ -268,6 +288,7 @@ export default function Profile() {
     navigate("/login");
   };
 
+<<<<<<< HEAD
 <<<<<<< HEAD
   return (
     <div className="min-h-screen bg-gray-50">
@@ -433,6 +454,8 @@ export default function Profile() {
             Delete Account
           </button>
 =======
+=======
+>>>>>>> fa7d4b60bc871122a25387589696ab1194809c05
   const handleDeleteAccount = async () => {
     setDeleting(true);
     try {
@@ -780,7 +803,10 @@ export default function Profile() {
             </motion.div>
 
           </div>
+<<<<<<< HEAD
 >>>>>>> 200716d (Implement profile management (update, password change, delete account) with phone support and userController separation)
+=======
+>>>>>>> fa7d4b60bc871122a25387589696ab1194809c05
         </div>
       </div>
     </>
