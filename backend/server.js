@@ -14,7 +14,12 @@ import eventRoutes from "./src/routes/EventRoutes.js";
 import userRoutes from "./src/routes/userRoutes.js";
 import notificationRoutes from "./src/routes/notificationRoutes.js";
 import registrationRoutes from "./src/routes/registrationRoutes.js";
+<<<<<<< HEAD
 >>>>>>> fa7d4b60bc871122a25387589696ab1194809c05
+=======
+import compression from "compression";      // ← add this
+
+>>>>>>> origin/feature/qr-attendance
 
 dotenv.config();
 const app = express();
@@ -40,9 +45,27 @@ app.use(
     credentials: true,
   })
 );
+app.use(compression());                     // ← add this (before body parser)
+
 
 // Body parser
 app.use(express.json());
+// NoSQL injection sanitizer
+app.use((req, res, next) => {
+  if (req.body) {
+    const sanitize = (obj) => {
+      for (const key in obj) {
+        if (key.startsWith('$') || key.includes('.')) {
+          delete obj[key];
+        } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+          sanitize(obj[key]);
+        }
+      }
+    };
+    sanitize(req.body);
+  }
+  next();
+});
 
 // ✅ Serve uploaded images (only once)
 app.use("/uploads", express.static("uploads"));

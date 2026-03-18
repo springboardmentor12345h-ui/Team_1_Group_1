@@ -1,7 +1,7 @@
 // AdminDashboard.jsx
 import { useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { getMyEvents, createEvent, updateEvent, deleteEvent, getImageUrl, getEventRegistrations, getAllRegistrations, approveRegistration, rejectRegistration, getAllUsers, getMyEventStudents, exportRegistrationsCSV, exportRegistrationsExcel, exportRegistrationsPDF, exportRegistrationsJSON, exportAllRegistrationsCSV, exportAllRegistrationsExcel, exportAllRegistrationsPDF, exportAllRegistrationsJSON } from "../services/api";
+import { getMyEvents, createEvent, updateEvent, deleteEvent, getImageUrl, getEventRegistrations, getAllRegistrations, approveRegistration, rejectRegistration, getAllUsers, getMyEventStudents, exportRegistrationsCSV, exportRegistrationsExcel, exportRegistrationsPDF, exportRegistrationsJSON, exportAllRegistrationsCSV, exportAllRegistrationsExcel, exportAllRegistrationsPDF, exportAllRegistrationsJSON, getEventAttendance, scanAttendanceQR } from "../services/api";
 import Navbar from "../components/Navbar";
 import StatsCard from "../components/StatsCard";
 import Sidebar from "../components/Sidebar";
@@ -31,6 +31,13 @@ import {
   FiTag,
   FiInfo,
   FiDownload,
+  FiActivity,
+  FiCamera,
+  FiZap,
+  FiWifi,
+  FiSlash,
+  FiClock,
+  FiPercent,
 } from "react-icons/fi";
 
 const EVENTS_PER_PAGE = 6;
@@ -130,6 +137,7 @@ export default function AdminDashboard() {
             { key: "users", label: "User Management", icon: <FiUsers /> },
             { key: "events", label: "Event Management", icon: <FiCalendar /> },
             { key: "registrations", label: "Registrations", icon: <FiCheckCircle /> },
+            { key: "attendance", label: "Attendance", icon: <FiActivity /> },
             { key: "logs", label: "Admin Logs", icon: <FiFileText /> },
           ]}
         />
@@ -149,6 +157,7 @@ export default function AdminDashboard() {
             {activeTab === "users" && <UserManagement />}
             {activeTab === "events" && <EventManagement />}
             {activeTab === "registrations" && <Registrations />}
+            {activeTab === "attendance" && <AttendanceSection />}
             {activeTab === "logs" && <AdminLogs />}
           </div>
         </main>
@@ -2088,6 +2097,638 @@ function Registrations() {
     </div>
   );
 }
+
+
+/* ================================================
+   ATTENDANCE SECTION
+================================================ */
+
+const NATIVE_SUPPORTED =
+  typeof window !== "undefined" &&
+  "BarcodeDetector" in window;
+
+
+/* ── Download helper ── */
+function triggerDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a   = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  a.parentNode.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* ── Pure-JS Excel builder (no library needed) ──
+   Produces a valid .xlsx with a styled header row.
+   Uses the Open XML SpreadsheetML format which Excel,
+   Google Sheets, and LibreOffice all open natively.    ── */
+function buildExcel(eventTitle, rows) {
+  const cols   = ["Student Name", "Email", "College", "Attended", "Attended At"];
+  const fields = ["name", "email", "college", "attended", "attendedAt"];
+
+  const colLetter = (i) => String.fromCharCode(65 + i); // A, B, C …
+
+  const escXml = (v) =>
+    String(v ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&apos;");
+
+  // Shared strings table
+  const strings = [];
+  const si = (v) => {
+    const s = escXml(v);
+    const i = strings.indexOf(s);
+    if (i !== -1) return i;
+    strings.push(s);
+    return strings.length - 1;
+  };
+
+  // Pre-register all strings
+  cols.forEach(si);
+  rows.forEach(r => fields.forEach(f => si(r[f])));
+
+  // Sheet rows XML
+  const headerCells = cols.map((c, i) =>
+    `<c r="${colLetter(i)}1" t="s" s="1"><v>${si(c)}</v></c>`
+  ).join("");
+
+  const dataRows = rows.map((r, ri) => {
+    const cells = fields.map((f, ci) =>
+      `<c r="${colLetter(ci)}${ri + 2}" t="s"><v>${si(r[f])}</v></c>`
+    ).join("");
+    return `<row r="${ri + 2}">${cells}</row>`;
+  }).join("");
+
+  const sheetXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetViews><sheetView workbookViewId="0"><selection activeCell="A1"/></sheetView></sheetViews>
+  <cols>
+    <col min="1" max="1" width="28" bestFit="1" customWidth="1"/>
+    <col min="2" max="2" width="32" bestFit="1" customWidth="1"/>
+    <col min="3" max="3" width="28" bestFit="1" customWidth="1"/>
+    <col min="4" max="4" width="12" bestFit="1" customWidth="1"/>
+    <col min="5" max="5" width="24" bestFit="1" customWidth="1"/>
+  </cols>
+  <sheetData>
+    <row r="1">${headerCells}</row>
+    ${dataRows}
+  </sheetData>
+</worksheet>`;
+
+  const sharedStringsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="${strings.length}" uniqueCount="${strings.length}">
+${strings.map(s => `<si><t xml:space="preserve">${s}</t></si>`).join("\n")}
+</sst>`;
+
+  // Bold style for header row (style index 1)
+  const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <fonts><font><sz val="11"/></font><font><b/><sz val="11"/></font></fonts>
+  <fills><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>
+  <borders><border><left/><right/><top/><bottom/><diagonal/></border></borders>
+  <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+  <cellXfs>
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+    <xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0"/>
+  </cellXfs>
+</styleSheet>`;
+
+  const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+          xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets><sheet name="${escXml(eventTitle.slice(0, 31))}" sheetId="1" r:id="rId1"/></sheets>
+</workbook>`;
+
+  const relsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/>
+  <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`;
+
+  const contentTypesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml"  ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml"              ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml"     ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+  <Override PartName="/xl/sharedStrings.xml"         ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>
+  <Override PartName="/xl/styles.xml"                ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+</Types>`;
+
+  const topRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`;
+
+  // Pack into ZIP (xlsx is a ZIP)
+  const files = {
+    "[Content_Types].xml"         : contentTypesXml,
+    "_rels/.rels"                  : topRelsXml,
+    "xl/workbook.xml"              : workbookXml,
+    "xl/_rels/workbook.xml.rels"   : relsXml,
+    "xl/worksheets/sheet1.xml"     : sheetXml,
+    "xl/sharedStrings.xml"         : sharedStringsXml,
+    "xl/styles.xml"                : stylesXml,
+  };
+
+  return zipFiles(files);
+}
+
+/* ── Minimal ZIP builder ── */
+function zipFiles(files) {
+  const enc  = new TextEncoder();
+  const parts = [];
+
+  const crc32 = (bytes) => {
+    let c = 0xFFFFFFFF;
+    const table = crc32.t || (crc32.t = (() => {
+      const t = new Uint32Array(256);
+      for (let i = 0; i < 256; i++) {
+        let n = i;
+        for (let j = 0; j < 8; j++) n = n & 1 ? 0xEDB88320 ^ (n >>> 1) : n >>> 1;
+        t[i] = n;
+      }
+      return t;
+    })());
+    for (let i = 0; i < bytes.length; i++) c = table[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+    return (c ^ 0xFFFFFFFF) >>> 0;
+  };
+
+  const u16 = (n) => [n & 0xFF, (n >> 8) & 0xFF];
+  const u32 = (n) => [n & 0xFF, (n >> 8) & 0xFF, (n >> 16) & 0xFF, (n >> 24) & 0xFF];
+
+  const centralDir = [];
+  let offset = 0;
+
+  for (const [name, content] of Object.entries(files)) {
+    const nameBytes = enc.encode(name);
+    const data      = enc.encode(content);
+    const crc       = crc32(data);
+    const size      = data.length;
+
+    const local = new Uint8Array([
+      0x50,0x4B,0x03,0x04,        // local file header sig
+      20,0,                        // version needed
+      0,0,                         // flags
+      0,0,                         // compression (stored)
+      0,0,0,0,                     // mod time/date
+      ...u32(crc),
+      ...u32(size), ...u32(size),  // compressed = uncompressed
+      ...u16(nameBytes.length), 0,0,
+      ...nameBytes,
+    ]);
+
+    parts.push(local, data);
+
+    centralDir.push(new Uint8Array([
+      0x50,0x4B,0x01,0x02,
+      20,0, 20,0, 0,0, 0,0, 0,0,0,0,
+      ...u32(crc),
+      ...u32(size), ...u32(size),
+      ...u16(nameBytes.length), 0,0, 0,0, 0,0, 0,0, 0,0,0,0,
+      ...u32(offset),
+      ...nameBytes,
+    ]));
+
+    offset += local.length + size;
+  }
+
+  const cdSize   = centralDir.reduce((s, b) => s + b.length, 0);
+  const eocd     = new Uint8Array([
+    0x50,0x4B,0x05,0x06, 0,0, 0,0,
+    ...u16(centralDir.length), ...u16(centralDir.length),
+    ...u32(cdSize), ...u32(offset), 0,0,
+  ]);
+
+  const total = parts.reduce((s, b) => s + b.length, 0)
+    + centralDir.reduce((s, b) => s + b.length, 0)
+    + eocd.length;
+
+  const out = new Uint8Array(total);
+  let pos = 0;
+  for (const b of [...parts, ...centralDir, eocd]) {
+    out.set(b, pos); pos += b.length;
+  }
+
+  return new Blob([out], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+}
+
+function AttendanceSection() {
+  const navigate = useNavigate();
+  const [events,          setEvents]          = useState([]);
+  const [selectedEventId, setSelectedEventId] = useState("");
+  const [attendance,      setAttendance]      = useState(null);
+  const [loadingEvents,   setLoadingEvents]   = useState(true);
+  const [loadingReport,   setLoadingReport]   = useState(false);
+  const [search,          setSearch]          = useState("");
+  const [attendedFilter,  setAttendedFilter]  = useState("all");
+  const [exporting,       setExporting]       = useState(null);
+  const [codeInput,       setCodeInput]       = useState("");
+  const [codeLoading,     setCodeLoading]     = useState(false);
+  const [codeResult,      setCodeResult]      = useState(null); // { success, message }
+
+  const handleVerifyCode = async () => {
+    if (!codeInput.trim() || codeInput.trim().length !== 6 || !selectedEventId) return;
+    try {
+      setCodeLoading(true);
+      setCodeResult(null);
+      const res = await fetch(
+        (await import("../services/api")).BASE_URL + "/api/registrations/verify-code",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: JSON.stringify({ code: codeInput.trim(), eventId: selectedEventId }),
+        }
+      );
+      const data = await res.json();
+      if (res.ok) {
+        setCodeResult({ success: true, message: `✅ ${data.student?.name} marked present` });
+        setCodeInput("");
+        // refresh attendance list
+        const { data: updated } = await getEventAttendance(selectedEventId);
+        setAttendance(updated);
+      } else {
+        setCodeResult({ success: false, message: data.message || "Invalid code" });
+      }
+    } catch {
+      setCodeResult({ success: false, message: "Failed to verify code. Try again." });
+    } finally {
+      setCodeLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const { data } = await getMyEvents();
+        setEvents(data);
+        if (data.length > 0) setSelectedEventId(data[0]._id);
+      } catch { /**/ } finally { setLoadingEvents(false); }
+    };
+    load();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedEventId) { setAttendance(null); return; }
+    const load = async () => {
+      try {
+        setLoadingReport(true); setAttendance(null);
+        const { data } = await getEventAttendance(selectedEventId);
+        setAttendance(data);
+      } catch { setAttendance(null); } finally { setLoadingReport(false); }
+    };
+    load();
+  }, [selectedEventId]);
+
+  const handleExport = async (format = "csv") => {
+    if (!attendance) return;
+    try {
+      setExporting(format);
+
+      const rows = attendance.registrations.map((r) => ({
+        name      : r.student?.name     || "",
+        email     : r.student?.email    || "",
+        college   : r.student?.college  || "",
+        attended  : r.attended ? "Yes" : "No",
+        attendedAt: r.attendedAt
+          ? new Date(r.attendedAt).toLocaleString("en-IN", { day:"numeric", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit", hour12:true })
+          : "",
+      }));
+
+      const title    = attendance.eventTitle.replace(/\s+/g, "_");
+      const filename = `attendance_${title}_${Date.now()}`;
+
+      if (format === "csv") {
+        const header = ["Student Name", "Email", "College", "Attended", "Attended At"];
+        const lines  = [header, ...rows.map(r => [r.name, r.email, r.college, r.attended, r.attendedAt])];
+        const csv    = lines.map(row => row.map(c => `"${String(c).replace(/"/g,'""')}"`).join(",")).join("\n");
+        triggerDownload(new Blob([csv], { type:"text/csv" }), filename + ".csv");
+      }
+
+      if (format === "excel") {
+        const blob = buildExcel(attendance.eventTitle, rows);
+        triggerDownload(blob, filename + ".xlsx");
+      }
+
+    } catch { /**/ } finally { setExporting(null); }
+  };
+
+  const filteredRows = (attendance?.registrations || []).filter((r) => {
+    const matchSearch = !search
+      || r.student?.name?.toLowerCase().includes(search.toLowerCase())
+      || r.student?.email?.toLowerCase().includes(search.toLowerCase());
+    const matchFilter = attendedFilter === "all"
+      || (attendedFilter === "attended" && r.attended)
+      || (attendedFilter === "absent"   && !r.attended);
+    return matchSearch && matchFilter;
+  });
+
+  const attendedPct = attendance && attendance.totalApproved > 0
+    ? Math.round((attendance.totalAttended / attendance.totalApproved) * 100) : 0;
+
+  return (
+    <div className="space-y-5">
+
+      {/* ── Header ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-800">Attendance</h3>
+          <p className="text-sm text-gray-400 mt-0.5">Scan student QR codes and track event attendance</p>
+        </div>
+        {attendance && (
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <button
+              onClick={() => handleExport("excel")}
+              disabled={!!exporting}
+              className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 active:scale-95 text-white text-sm font-semibold rounded-xl transition-all shadow-sm shadow-emerald-200"
+            >
+              {exporting === "excel"
+                ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                : <FiDownload size={15} />}
+              Export Excel
+            </button>
+            <button
+              onClick={() => handleExport("csv")}
+              disabled={!!exporting}
+              className="flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-gray-50 disabled:opacity-60 active:scale-95 text-gray-700 text-sm font-semibold rounded-xl transition-all border border-gray-200"
+            >
+              {exporting === "csv"
+                ? <span className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                : <FiDownload size={15} />}
+              CSV
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ── Event Selector ── */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-5">
+        <label className="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2.5">
+          Select event
+        </label>
+        {loadingEvents ? (
+          <div className="h-10 bg-gray-100 rounded-xl animate-pulse w-full sm:w-80" />
+        ) : events.length === 0 ? (
+          <p className="text-sm text-gray-400">No events found. Create an event first.</p>
+        ) : (
+          <select
+            value={selectedEventId}
+            onChange={(e) => setSelectedEventId(e.target.value)}
+            className="w-full sm:w-96 text-sm border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-600/20 bg-white text-gray-800 font-medium transition-all"
+          >
+            {events.map((ev) => (
+              <option key={ev._id} value={ev._id}>{ev.title}</option>
+            ))}
+          </select>
+        )}
+      </div>
+
+      {/* ── Scan Panel ── */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="flex flex-col sm:flex-row items-center gap-5 p-5 sm:p-6">
+          <div className="w-14 h-14 rounded-2xl bg-blue-600 flex items-center justify-center flex-shrink-0 shadow-md shadow-blue-200">
+            <FiCamera size={24} color="#fff" />
+          </div>
+          <div className="flex-1 text-center sm:text-left">
+            <h4 className="text-sm font-semibold text-gray-800">Scan QR codes at the event</h4>
+            <p className="text-xs text-gray-400 mt-1">
+              Open the check-in scanner on your phone or tablet at the venue entrance.
+              It runs independently — no dashboard navigation, just point and scan.
+            </p>
+          </div>
+          <button
+            onClick={() => navigate("/dashboard/collegeadmin/check-in")}
+            className="flex items-center gap-2 px-5 py-3 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-sm font-semibold rounded-xl transition-all shadow-md shadow-blue-200 whitespace-nowrap flex-shrink-0"
+          >
+            <FiCamera size={15} />
+            Open Scanner
+          </button>
+        </div>
+      </div>
+
+      {/* ── Code Verification Panel ── */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="p-4 sm:p-6">
+          <div className="flex items-start gap-3 mb-4">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0">
+              <FiCheckSquare size={16} className="text-amber-600" />
+            </div>
+            <div className="min-w-0">
+              <h4 className="text-sm font-semibold text-gray-800">Manual Code Entry</h4>
+              <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">Use when QR scan fails — enter the 6-digit code from student&#39;s ticket</p>
+            </div>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2.5">
+            <input
+              type="text"
+              inputMode="numeric"
+              maxLength={6}
+              value={codeInput}
+              onChange={(e) => { setCodeInput(e.target.value.replace(/\D/g, "")); setCodeResult(null); }}
+              onKeyDown={(e) => e.key === "Enter" && handleVerifyCode()}
+              placeholder="Enter 6-digit code"
+              className="flex-1 text-center text-xl font-bold tracking-[0.4em] border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 bg-gray-50 transition-all placeholder:text-gray-300 placeholder:text-sm placeholder:tracking-normal placeholder:font-normal"
+              disabled={codeLoading || !selectedEventId}
+            />
+            <button
+              onClick={handleVerifyCode}
+              disabled={codeInput.length !== 6 || codeLoading || !selectedEventId}
+              className="w-full sm:w-auto px-6 py-3 bg-amber-500 hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 text-white text-sm font-semibold rounded-xl transition-all flex items-center justify-center gap-2 flex-shrink-0"
+            >
+              {codeLoading
+                ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                : <FiCheckCircle size={15} />}
+              Verify Code
+            </button>
+          </div>
+          {codeResult && (
+            <div className={`mt-3 px-4 py-2.5 rounded-xl text-sm font-medium ${
+              codeResult.success
+                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                : "bg-red-50 text-red-600 border border-red-200"
+            }`}>
+              {codeResult.message}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Stats Bar ── */}
+      {attendance && !loadingReport && (
+        <div className="grid grid-cols-3 gap-2 sm:gap-4">
+          {/* Approved */}
+          <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-100 shadow-sm p-2.5 sm:p-4 flex flex-col sm:flex-row items-center sm:items-center gap-1.5 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 flex-shrink-0">
+              <FiUsers size={14} />
+            </div>
+            <div className="min-w-0 text-center sm:text-left">
+              <p className="text-base sm:text-xl font-bold text-gray-800 leading-none">{attendance.totalApproved}</p>
+              <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5">Approved</p>
+            </div>
+          </div>
+          {/* Attended */}
+          <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-100 shadow-sm p-2.5 sm:p-4 flex flex-col sm:flex-row items-center sm:items-center gap-1.5 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 flex-shrink-0">
+              <FiCheckCircle size={14} />
+            </div>
+            <div className="min-w-0 text-center sm:text-left">
+              <p className="text-base sm:text-xl font-bold text-gray-800 leading-none">{attendance.totalAttended}</p>
+              <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5">Attended</p>
+            </div>
+          </div>
+          {/* Rate */}
+          <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-100 shadow-sm p-2.5 sm:p-4">
+            <div className="flex justify-between items-center mb-1.5 sm:mb-2">
+              <p className="text-[10px] sm:text-xs text-gray-400 font-medium">Rate</p>
+              <p className="text-[10px] sm:text-xs font-bold text-gray-700">{attendedPct}%</p>
+            </div>
+            <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className="h-1.5 rounded-full bg-emerald-500 transition-all duration-700"
+                style={{ width:`${attendedPct}%` }}
+              />
+            </div>
+            <p className="text-[10px] sm:text-xs text-gray-400 mt-1 truncate">
+              {attendance.totalApproved - attendance.totalAttended} absent
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Attendance Table ── */}
+      {loadingReport ? (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          {[1,2,3,4].map((i) => (
+            <div key={i} className="flex items-center gap-3 px-4 sm:px-6 py-4 border-b border-gray-50 animate-pulse">
+              <div className="w-9 h-9 rounded-full bg-gray-100 flex-shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="h-3 bg-gray-100 rounded w-1/3" />
+                <div className="h-2.5 bg-gray-100 rounded w-2/5" />
+              </div>
+              <div className="h-6 w-20 bg-gray-100 rounded-full" />
+            </div>
+          ))}
+        </div>
+      ) : attendance ? (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          {/* Controls */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 px-4 sm:px-5 py-3.5 border-b border-gray-100">
+            <div className="relative flex-1">
+              <FiSearch size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300" />
+              <input
+                type="text"
+                placeholder="Search name or email…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-9 pr-8 py-2.5 text-sm border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-500 bg-gray-50 transition-all"
+              />
+              {search && (
+                <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition">
+                  <FiX size={13} />
+                </button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                { value:"all",      label:"All",      count: attendance.registrations.length },
+                { value:"attended", label:"Present",  count: attendance.totalAttended },
+                { value:"absent",   label:"Absent",   count: attendance.totalApproved - attendance.totalAttended },
+              ].map((f) => (
+                <button
+                  key={f.value}
+                  onClick={() => setAttendedFilter(f.value)}
+                  className={`flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${
+                    attendedFilter === f.value
+                      ? "bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-200"
+                      : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50"
+                  }`}
+                >
+                  {f.label}
+                  <span className={`ml-0.5 text-xs px-1.5 py-0.5 rounded-full font-bold ${
+                    attendedFilter === f.value ? "bg-white/20 text-white" : "bg-gray-100 text-gray-400"
+                  }`}>{f.count}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Rows */}
+          {filteredRows.length === 0 ? (
+            <div className="py-14 text-center">
+              <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center mx-auto mb-3">
+                <FiUsers size={20} className="text-gray-300" />
+              </div>
+              <p className="text-sm text-gray-400">No results match your filters</p>
+            </div>
+          ) : (
+            filteredRows.map((row, i) => (
+              <div
+                key={row.registrationId || i}
+                className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3.5 border-b border-gray-50 last:border-b-0 hover:bg-gray-50/50 transition-colors"
+              >
+                {/* Avatar + info */}
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 transition-colors ${
+                    row.attended ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-400"
+                  }`}>
+                    {row.student?.name?.charAt(0)?.toUpperCase() || "?"}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-800 truncate leading-snug">{row.student?.name || "Unknown"}</p>
+                    <p className="text-xs text-gray-400 truncate">{row.student?.email}</p>
+                  </div>
+                </div>
+
+                {/* Attended at — desktop only */}
+                <div className="hidden lg:block flex-shrink-0 text-right">
+                  {row.attended && row.attendedAt ? (
+                    <p className="text-xs text-gray-400">
+                      {new Date(row.attendedAt).toLocaleString("en-IN", {
+                        day:"numeric", month:"short", hour:"2-digit", minute:"2-digit", hour12:true,
+                      })}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-200">—</p>
+                  )}
+                </div>
+
+                {/* Status badge */}
+                <div className="flex-shrink-0">
+                  {row.attended ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      Present
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-400 border border-gray-200">
+                      <span className="w-1.5 h-1.5 rounded-full bg-gray-300" />
+                      Absent
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      ) : !loadingEvents && selectedEventId ? (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
+          <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center mx-auto mb-3">
+            <FiAlertCircle size={20} className="text-gray-300" />
+          </div>
+          <p className="text-sm text-gray-400">Could not load attendance data for this event.</p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 
 /* ================================================
    ADMIN LOGS

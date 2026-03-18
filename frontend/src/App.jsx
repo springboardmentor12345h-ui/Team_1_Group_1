@@ -13,8 +13,15 @@ import EventDetail from "./pages/EventDetail";
 import Profile from "./pages/Profile";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import TicketPage from "./pages/TicketPage";
+import CheckInPage from "./pages/CheckInPage";
+import AppLoader from "./components/AppLoader";
+import { useAuth } from "./context/AuthContext";
 
 function App() {
+  const { loading } = useAuth();                      // ← add this
+
+  if (loading) return <AppLoader />;    
   return (
     <BrowserRouter>
 
@@ -32,6 +39,24 @@ function App() {
         <Route path="/events" element={<Events />} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/events/:id" element={<EventDetail />} />
+
+        <Route
+  path="/ticket/:id"
+  element={
+    <ProtectedRoute roles={["student"]}>
+      <TicketPage />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/dashboard/collegeadmin/check-in"
+  element={
+    <ProtectedRoute roles={["college_admin"]}>
+      <CheckInPage />
+    </ProtectedRoute>
+  }
+/>
 
         {/* Student Dashboard */}
         <Route
