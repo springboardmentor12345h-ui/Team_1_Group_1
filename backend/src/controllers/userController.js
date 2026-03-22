@@ -1,7 +1,10 @@
 import bcrypt from "bcryptjs";
 import User from "../models/User.js";
+<<<<<<< HEAD
+=======
 import { sendEmail, emailTemplates } from "../services/emailService.js";           // 🔔 NEW
 import { createAndSendNotification } from "./notificationController.js";           // 🔔 NEW
+>>>>>>> fa7d4b60bc871122a25387589696ab1194809c05
 
 /*
 ========================================
@@ -96,7 +99,10 @@ export const deleteAccount = async (req, res) => {
     res.status(500).json({ message: "Delete failed" });
   }
 };
+<<<<<<< HEAD
+=======
 
+>>>>>>> fa7d4b60bc871122a25387589696ab1194809c05
 export const rejectAdmin = async (req, res) => {
   try {
     const adminId = req.params.id;
@@ -108,6 +114,12 @@ export const rejectAdmin = async (req, res) => {
     }
 
     admin.status = "rejected";
+<<<<<<< HEAD
+
+    await admin.save();
+
+    res.json({ message: "Admin rejected successfully" });
+=======
     await admin.save();
 
     res.status(200).json({ message: "Admin rejected successfully" });
@@ -126,10 +138,13 @@ export const rejectAdmin = async (req, res) => {
     } catch (notifError) {
       console.error("⚠️ Notification error (non-blocking):", notifError.message);
     }
+>>>>>>> fa7d4b60bc871122a25387589696ab1194809c05
 
   } catch (error) {
     res.status(500).json({ message: "Error rejecting admin" });
   }
+<<<<<<< HEAD
+=======
 };
 
 /*
@@ -165,4 +180,5 @@ export const getAllUsers = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch users" });
   }
+>>>>>>> fa7d4b60bc871122a25387589696ab1194809c05
 };

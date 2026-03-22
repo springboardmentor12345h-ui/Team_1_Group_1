@@ -15,6 +15,8 @@ import { BASE_URL } from "../services/api";
 import toast from "react-hot-toast";
 import NotificationBell from "./NotificationBell"; // 🔔 NEW
 
+const BASE_URL = "http://localhost:5000";
+
 export default function Navbar({ toggleSidebar, setSidebarOpen }) {
   const [open, setOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -46,8 +48,13 @@ export default function Navbar({ toggleSidebar, setSidebarOpen }) {
   }[role] || "bg-gray-400";
 
   useEffect(() => {
+<<<<<<< HEAD
+    setImgError(false);
+  }, [user?.profileImage]);
+=======
   setImgError(false);
 }, [user?.id]);
+>>>>>>> fa7d4b60bc871122a25387589696ab1194809c05
 
   const avatarSrc =
     user?.profileImage && !imgError
@@ -164,6 +171,10 @@ export default function Navbar({ toggleSidebar, setSidebarOpen }) {
             </button>
           </>
         ) : (
+<<<<<<< HEAD
+          /* ── Authenticated dropdown trigger ── */
+          <div ref={dropdownRef} className="relative">
+=======
           /* ── Authenticated ── */
           <div className="flex items-center gap-2">
 
@@ -182,6 +193,7 @@ export default function Navbar({ toggleSidebar, setSidebarOpen }) {
 
             {/* ── Avatar dropdown trigger ── */}
             <div ref={dropdownRef} className="relative">
+>>>>>>> fa7d4b60bc871122a25387589696ab1194809c05
             <button
               onClick={() => setOpen(!open)}
               className={`flex items-center gap-2.5 pl-1.5 pr-3 py-1.5 rounded-full border transition-all duration-150

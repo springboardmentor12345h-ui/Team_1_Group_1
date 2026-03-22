@@ -272,6 +272,24 @@ const seedEvents = async () => {
     }
 
     // ─────────────────────────────────────────────
+<<<<<<< HEAD
+    // STEP 2: Seed events ONLY if DB is empty
+    // ─────────────────────────────────────────────
+
+    const existingCount = await Event.countDocuments();
+
+    if (existingCount === 0) {
+      console.log("📦 No events found. Seeding new events...\n");
+
+      const events = getEvents(admin._id).map(e => ({
+        ...e,
+        maxParticipants: 100,
+        currentParticipants: 0
+      }));
+
+      const created = await Event.insertMany(events);
+
+=======
     // STEP 2: Only insert events that don't exist yet (checked by title)
     // ─────────────────────────────────────────────
 
@@ -286,10 +304,16 @@ const seedEvents = async () => {
     } else {
       console.log(`📦 Inserting ${eventsToInsert.length} missing event(s)...\n`);
       const created = await Event.insertMany(eventsToInsert);
+>>>>>>> origin/feature/qr-attendance
       console.log(`\n✅ Successfully seeded ${created.length} events:\n`);
       created.forEach((e, i) => {
         console.log(`  ${i + 1}. [${e.category.padEnd(8)}] ${e.title}`);
       });
+<<<<<<< HEAD
+    } else {
+      console.log(`ℹ ${existingCount} events already exist. Skipping event creation.`);
+=======
+>>>>>>> origin/feature/qr-attendance
     }
 
     console.log("\n🎉 Seed check complete!\n");

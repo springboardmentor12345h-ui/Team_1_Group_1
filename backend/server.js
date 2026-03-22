@@ -6,12 +6,20 @@ import adminRoutes from "./src/routes/adminRoutes.js";
 import connectDB from "./src/config/db.js";
 import authRoutes from "./src/routes/authRoutes.js";
 import chatRoutes from "./src/routes/chatRoutes.js";
+<<<<<<< HEAD
+import eventRoutes from "./src/routes/eventRoutes.js";
+import userRoutes from "./src/routes/userRoutes.js";
+=======
 import eventRoutes from "./src/routes/EventRoutes.js";
 import userRoutes from "./src/routes/userRoutes.js";
 import notificationRoutes from "./src/routes/notificationRoutes.js";
 import registrationRoutes from "./src/routes/registrationRoutes.js";
+<<<<<<< HEAD
+>>>>>>> fa7d4b60bc871122a25387589696ab1194809c05
+=======
 import compression from "compression";      // ← add this
 
+>>>>>>> origin/feature/qr-attendance
 
 dotenv.config();
 const app = express();

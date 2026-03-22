@@ -118,4 +118,16 @@ export const sendChatMessage = (message)   => API.post("/chat", { message });
 // e.g.  getImageUrl(event.image)  →  "http://localhost:5000/uploads/abc.jpg"
 export const getImageUrl = (path) => (path ? `${BASE_URL}/${path}` : null);
 
+/* ================= USER APIs ================= */
+
+// Update profile (name, college) — multipart if sending profileImage
+export const updateProfile = (data) =>
+  API.put("/users/update-profile", data, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+
+export const changePassword = (data) => API.put("/users/change-password", data);
+
+export const deleteAccount = () => API.delete("/users/delete-account");
+
 export default API;

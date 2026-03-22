@@ -33,6 +33,11 @@ const userSchema = new mongoose.Schema(
         return this.role === "college_admin";
       },
     },
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+=======
+>>>>>>> fa7d4b60bc871122a25387589696ab1194809c05
 
     // ✅ Added phone field
     phone: {
@@ -40,11 +45,22 @@ const userSchema = new mongoose.Schema(
       default: "",
     },
 
+<<<<<<< HEAD
+>>>>>>> 200716d (Implement profile management (update, password change, delete account) with phone support and userController separation)
+=======
+>>>>>>> fa7d4b60bc871122a25387589696ab1194809c05
     profileImage: {
       type: String,
       default: "",
     },
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
 
+>>>>>>> 200716d (Implement profile management (update, password change, delete account) with phone support and userController separation)
+=======
+
+>>>>>>> fa7d4b60bc871122a25387589696ab1194809c05
     // 🔐 Approval system
     status: {
       type: String,

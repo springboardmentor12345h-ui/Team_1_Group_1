@@ -232,11 +232,26 @@ function ManageAdmins() {
     }
   };
 
+<<<<<<< HEAD
+  const rejectAdmin = async (id) => {
+    try {
+      await API.delete(`/admin/reject/${id}`);
+      fetchPendingAdmins();
+    } catch (err) {
+      alert(err.response?.data?.message || "Rejection failed");
+    }
+  };
+
+  useEffect(() => {
+    fetchPendingAdmins();
+  }, []);
+=======
   const getInitials = (name) =>
     name?.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2) || "?";
 
   const avatarColors = ["bg-blue-500", "bg-violet-500", "bg-rose-500", "bg-amber-500", "bg-teal-500", "bg-indigo-500"];
   const getColor = (name) => avatarColors[(name?.charCodeAt(0) || 0) % avatarColors.length];
+>>>>>>> fa7d4b60bc871122a25387589696ab1194809c05
 
   return (
     <>
@@ -256,6 +271,35 @@ function ManageAdmins() {
 
       <AdminDetailModal admin={selectedAdmin} onClose={() => setSelectedAdmin(null)} />
 
+<<<<<<< HEAD
+      {pendingAdmins.map((admin) => (
+        <div
+          key={admin._id}
+          className="p-4 border border-gray-200 rounded-lg mb-3 flex justify-between items-center gap-3"
+        >
+          <div className="min-w-0">
+            <p className="font-semibold">{admin.name}</p>
+            <p className="text-sm text-gray-600 truncate">
+              {admin.email} • {admin.college}
+            </p>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => approveAdmin(admin._id)}
+              className="bg-green-600 text-white px-4 py-1.5 rounded-md hover:bg-green-700 transition text-sm"
+            >
+              Approve
+            </button>
+
+            <button
+              onClick={() => rejectAdmin(admin._id)}
+              className="bg-red-600 text-white px-4 py-1.5 rounded-md hover:bg-red-700 transition text-sm"
+            >
+              Reject
+            </button>
+          </div>
+=======
       <div className="bg-white p-5 sm:p-6 rounded-xl shadow-md shadow-black/5">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
@@ -273,6 +317,7 @@ function ManageAdmins() {
           >
             Refresh
           </button>
+>>>>>>> fa7d4b60bc871122a25387589696ab1194809c05
         </div>
 
         {/* Search */}
@@ -425,6 +470,13 @@ function AllUsers() {
   };
 
   return (
+<<<<<<< HEAD
+    <div className="bg-white p-6 rounded-xl shadow-md shadow-black/5">
+      <h3 className="mb-4 text-lg font-semibold">All Platform Users</h3>
+      <p className="text-gray-600 text-sm">
+        View and manage all registered students and admins.
+      </p>
+=======
     <div className="bg-white p-5 sm:p-6 rounded-xl shadow-md shadow-black/5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
         <h3 className="text-lg font-semibold">All Platform Users</h3>
@@ -507,6 +559,7 @@ function AllUsers() {
           </div>
         </>
       )}
+>>>>>>> fa7d4b60bc871122a25387589696ab1194809c05
     </div>
   );
 }
@@ -516,7 +569,9 @@ function PlatformSettings() {
   return (
     <div className="bg-white p-6 rounded-xl shadow-md shadow-black/5">
       <h3 className="mb-4 text-lg font-semibold">Platform Settings</h3>
-      <p className="text-gray-600 text-sm">Configure platform-level options, maintenance mode, and global settings.</p>
+      <p className="text-gray-600 text-sm">
+        Configure platform-level options, maintenance mode, and global settings.
+      </p>
     </div>
   );
 }
@@ -526,7 +581,9 @@ function SystemLogs() {
   return (
     <div className="bg-white p-6 rounded-xl shadow-md shadow-black/5">
       <h3 className="mb-4 text-lg font-semibold">System Logs</h3>
-      <p className="text-gray-600 text-sm">Monitor complete system activity and platform logs.</p>
+      <p className="text-gray-600 text-sm">
+        Monitor complete system activity and platform logs.
+      </p>
     </div>
   );
 }
