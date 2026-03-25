@@ -5,6 +5,11 @@ import { motion } from "framer-motion";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useAuth } from "../context/AuthContext";
+<<<<<<< Updated upstream
+=======
+import { ReviewsSection } from "../components/Feedback";
+
+>>>>>>> Stashed changes
 import {
   FiArrowLeft,
   FiCalendar,

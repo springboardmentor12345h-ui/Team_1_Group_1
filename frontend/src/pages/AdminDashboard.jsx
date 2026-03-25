@@ -6,6 +6,13 @@ import Navbar from "../components/Navbar";
 import StatsCard from "../components/StatsCard";
 import Sidebar from "../components/Sidebar";
 import EventCard from "../components/EventCard";
+<<<<<<< Updated upstream
+=======
+import { useAuth } from "../context/AuthContext";
+import { FeedbackSection } from "../components/Feedback";
+
+import { getAdminLogs } from "../services/api";
+>>>>>>> Stashed changes
 import {
   FiUsers,
   FiFileText,
