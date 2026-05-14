@@ -1,0 +1,648 @@
+
+--- START OF FILE: backend\package.json ---
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.2.4",
+    "express": "^5.2.1",
+    "helement": "^1.0.0",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.2.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11"
+  }
+}
+
+--- END OF FILE: backend\package.json ---
+
+--- START OF FILE: backend\server.js ---
+import dotenv from "dotenv";
+dotenv.config();
+
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import connectDB from "./src/config/db.js";
+
+import {
+   verifyToken,
+   collegeAdminOnly,
+   superAdminOnly,
+   studentOnly
+} from "./src/middleware/authMiddleware.js";
+
+const app = express();
+
+/* ===============================
+   CONNECT DATABASE
+================================ */
+connectDB();
+
+/* ===============================
+   SECURITY MIDDLEWARE
+================================ */
+app.use(helmet());
+
+app.use(cors({
+   origin: "http://localhost:3000",
+   credentials: true,
+}));
+
+app.use(express.json());
+
+/* ===============================
+   TEST ROUTE
+================================ */
+app.get("/", (req, res) => {
+   res.send("CampusEventHub API running");
+});
+
+/* ===============================
+   PROTECTED ROUTES
+================================ */
+
+// College Admin Route
+app.get("/admin", verifyToken, collegeAdminOnly, (req, res) => {
+   res.json({ message: "Welcome College Admin" });
+});
+
+// Super Admin Route
+app.get("/superadmin", verifyToken, superAdminOnly, (req, res) => {
+   res.json({ message: "Welcome Super Admin" });
+});
+
+// Student Route
+app.get("/student", verifyToken, studentOnly, (req, res) => {
+   res.json({ message: "Welcome Student" });
+});
+
+/* ===============================
+   START SERVER
+================================ */
+const PORT = process.env.PORT || 5000;
+
+app.listen(PORT, () => {
+   console.log(`Server running on port ${PORT}`);
+});
+--- END OF FILE: backend\server.js ---
+
+--- START OF FILE: backend\src\config\db.js ---
+import mongoose from "mongoose";
+
+const connectDB = async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log("MongoDB Connected");
+  } catch (error) {
+    console.error("MongoDB connection failed:", error);
+    process.exit(1);
+  }
+};
+
+export default connectDB;
+
+--- END OF FILE: backend\src\config\db.js ---
+
+--- START OF FILE: backend\src\middleware\authmiddleware.js ---
+import jwt from "jsonwebtoken";
+
+/* ===============================
+   VERIFY TOKEN MIDDLEWARE
+================================= */
+export const verifyToken = (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    // Check if header exists
+    if (!authHeader) {
+      return res.status(401).json({ message: "No token provided" });
+    }
+
+    // Must start with Bearer
+    if (!authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ message: "Invalid authorization format" });
+    }
+
+    const tokenParts = authHeader.split(" ");
+
+    if (tokenParts.length !== 2) {
+      return res.status(401).json({ message: "Malformed token" });
+    }
+
+    const token = tokenParts[1];
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    req.user = decoded;
+    next();
+
+  } catch (error) {
+
+    if (error.name === "TokenExpiredError") {
+      return res.status(401).json({ message: "Token expired" });
+    }
+
+    return res.status(401).json({ message: "Invalid token" });
+  }
+};
+
+
+/* ===============================
+   ROLE BASED MIDDLEWARE
+================================= */
+
+// College Admin only
+export const collegeAdminOnly = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  if (req.user.role !== "college_admin") {
+    return res.status(403).json({ message: "College Admin access only" });
+  }
+
+  next();
+};
+
+
+// Super Admin only
+export const superAdminOnly = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  if (req.user.role !== "super_admin") {
+    return res.status(403).json({ message: "Super Admin access only" });
+  }
+
+  next();
+};
+
+
+// Student only
+export const studentOnly = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  if (req.user.role !== "student") {
+    return res.status(403).json({ message: "Student access only" });
+  }
+
+  next();
+};
+--- END OF FILE: backend\src\middleware\authmiddleware.js ---
+
+--- START OF FILE: docs\README.md ---
+# Campus Event Hub
+
+Campus Event Hub is a MERN-based inter-college event management platform where:
+
+* Students can browse and register for events
+* College admins can manage events and participants
+* Feedback and interaction improve engagement
+
+---
+
+## 🚀 Project Status
+
+### ✅ Initial Scaffold Completed
+
+The following setup has been completed:
+
+#### Backend
+
+* Node.js + Express server initialized
+* MongoDB connection configured
+* Basic server running successfully
+* Clean folder structure created
+
+#### Frontend
+
+* React app created using **Vite**
+* Dependencies installed
+* Default project running successfully
+
+#### Repository
+
+* Monorepo structure with:
+
+  * `backend/`
+  * `frontend/`
+* Root `.gitignore` configured
+* Ready for team branching and development
+
+---
+
+## 📁 Project Structure
+
+```
+campus-event-hub/
+│
+├── backend/
+│   ├── src/
+│   │   ├── config/
+│   │   ├── controllers/
+│   │   ├── middleware/
+│   │   ├── models/
+│   │   └── routes/
+│   ├── server.js
+│   └── package.json
+│
+├── frontend/
+│   ├── src/
+│   ├── public/
+│   └── package.json
+│
+└── README.md
+```
+
+---
+
+## ▶️ How to Run the Project
+
+### 1️⃣ Backend
+
+```bash
+cd backend
+npm install
+node server.js
+```
+
+Backend runs on:
+
+```
+http://localhost:5000
+```
+
+---
+
+### 2️⃣ Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Frontend runs on:
+
+```
+http://localhost:5173
+```
+
+---
+
+## 🧩 Current Development Phase
+
+**Milestone 1 – Authentication System**
+
+Upcoming work includes:
+
+* Student & Admin registration/login
+* JWT authentication
+* Role-based dashboards
+* Protected routes
+
+---
+
+## 👥 Team Workflow
+
+* `main` branch is **protected**
+* Each member must:
+
+  1. Create their own feature branch
+  2. Push code to that branch
+  3. Create a Pull Request to `main`
+
+❌ No direct pushes to `main`.
+
+
+
+
+--- END OF FILE: docs\README.md ---
+
+--- START OF FILE: frontend\eslint.config.js ---
+import js from '@eslint/js'
+import globals from 'globals'
+import reactHooks from 'eslint-plugin-react-hooks'
+import reactRefresh from 'eslint-plugin-react-refresh'
+import { defineConfig, globalIgnores } from 'eslint/config'
+
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{js,jsx}'],
+    extends: [
+      js.configs.recommended,
+      reactHooks.configs.flat.recommended,
+      reactRefresh.configs.vite,
+    ],
+    languageOptions: {
+      ecmaVersion: 2020,
+      globals: globals.browser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        ecmaFeatures: { jsx: true },
+        sourceType: 'module',
+      },
+    },
+    rules: {
+      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+    },
+  },
+])
+
+--- END OF FILE: frontend\eslint.config.js ---
+
+--- START OF FILE: frontend\index.html ---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>frontend</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
+
+--- END OF FILE: frontend\index.html ---
+
+--- START OF FILE: frontend\package.json ---
+{
+  "name": "frontend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "globals": "^16.5.0",
+    "vite": "^7.3.1"
+  }
+}
+
+--- END OF FILE: frontend\package.json ---
+
+--- START OF FILE: frontend\README.md ---
+# React + Vite
+
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+
+Currently, two official plugins are available:
+
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+
+## React Compiler
+
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+
+## Expanding the ESLint configuration
+
+If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+
+--- END OF FILE: frontend\README.md ---
+
+--- START OF FILE: frontend\src\App.css ---
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+--- END OF FILE: frontend\src\App.css ---
+
+--- START OF FILE: frontend\src\App.jsx ---
+import { useState } from 'react'
+import reactLogo from './assets/react.svg'
+import viteLogo from '/vite.svg'
+import './App.css'
+
+function App() {
+  const [count, setCount] = useState(0)
+
+  return (
+    <>
+      <div>
+        <a href="https://vite.dev" target="_blank">
+          <img src={viteLogo} className="logo" alt="Vite logo" />
+        </a>
+        <a href="https://react.dev" target="_blank">
+          <img src={reactLogo} className="logo react" alt="React logo" />
+        </a>
+      </div>
+      <h1>Vite + React</h1>
+      <div className="card">
+        <button onClick={() => setCount((count) => count + 1)}>
+          count is {count}
+        </button>
+        <p>
+          Edit <code>src/App.jsx</code> and save to test HMR
+        </p>
+      </div>
+      <p className="read-the-docs">
+        Click on the Vite and React logos to learn more
+      </p>
+    </>
+  )
+}
+
+export default App
+
+--- END OF FILE: frontend\src\App.jsx ---
+
+--- START OF FILE: frontend\src\index.css ---
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+a:hover {
+  color: #535bf2;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+button:hover {
+  border-color: #646cff;
+}
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+  a:hover {
+    color: #747bff;
+  }
+  button {
+    background-color: #f9f9f9;
+  }
+}
+
+--- END OF FILE: frontend\src\index.css ---
+
+--- START OF FILE: frontend\src\main.jsx ---
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import './index.css'
+import App from './App.jsx'
+
+createRoot(document.getElementById('root')).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+)
+
+--- END OF FILE: frontend\src\main.jsx ---
+
+--- START OF FILE: frontend\vite.config.js ---
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+// https://vite.dev/config/
+export default defineConfig({
+  plugins: [react()],
+})
+
+--- END OF FILE: frontend\vite.config.js ---
+
+--- START OF FILE: package.json ---
+{
+  "name": "campuseventhub-module-3",
+  "version": "1.0.0",
+  "description": "",
+  "main": "middleware.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "dotenv": "^17.2.4",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.2.0"
+  }
+}
+
+--- END OF FILE: package.json ---
+
+--- START OF FILE: README.md ---
+# Team_1_Group_1
+--- END OF FILE: README.md ---
